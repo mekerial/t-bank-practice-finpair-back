@@ -1,0 +1,6 @@
+@FinPair.FinanceService_HostAddress = http://localhost:5071
+
+GET {{FinPair.FinanceService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

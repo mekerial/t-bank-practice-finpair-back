@@ -1,0 +1,37 @@
+<Solution>
+  <Folder Name="/building-blocks/">
+    <Project Path="building-blocks/FinPair.Common/FinPair.Common.csproj" />
+    <Project Path="building-blocks/FinPair.Contracts/FinPair.Contracts.csproj" />
+    <Project Path="building-blocks/FinPair.Infrastructure/FinPair.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/gateways/">
+    <Project Path="gateways/FinPair.ApiGateway/FinPair.ApiGateway.csproj" />
+  </Folder>
+  <Folder Name="/services/" />
+  <Folder Name="/services/Analytics/">
+    <Project Path="services/Analytics/FinPair.AnalyticsService/FinPair.AnalyticsService.csproj" />
+  </Folder>
+  <Folder Name="/services/Auth/">
+    <Project Path="services/Auth/FinPair.AuthService/FinPair.AuthService.csproj" />
+  </Folder>
+  <Folder Name="/services/Couple/">
+    <Project Path="services/Couple/FinPair.CoupleService/FinPair.CoupleService.csproj" />
+  </Folder>
+  <Folder Name="/services/Finance/">
+    <Project Path="services/Finance/FinPair.FinanceService/FinPair.FinanceService.csproj" />
+  </Folder>
+  <Folder Name="/services/Goals/">
+    <Project Path="services/Goals/FinPair.GoalService/FinPair.GoalService.csproj" />
+  </Folder>
+  <Folder Name="/services/Support/">
+    <Project Path="services/Support/FinPair.SupportService/FinPair.SupportService.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FinPair.AnalyticsService.Tests/FinPair.AnalyticsService.Tests.csproj" />
+    <Project Path="tests/FinPair.AuthService.Tests/FinPair.AuthService.Tests.csproj" />
+    <Project Path="tests/FinPair.CoupleService.Tests/FinPair.CoupleService.Tests.csproj" />
+    <Project Path="tests/FinPair.FinanceService.Tests/FinPair.FinanceService.Tests.csproj" />
+    <Project Path="tests/FinPair.GoalService.Tests/FinPair.GoalService.Tests.csproj" />
+    <Project Path="tests/FinPair.SupportService.Tests/FinPair.SupportService.Tests.csproj" />
+  </Folder>
+</Solution>
