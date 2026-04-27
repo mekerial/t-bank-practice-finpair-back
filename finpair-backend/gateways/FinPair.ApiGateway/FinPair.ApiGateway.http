@@ -1,6 +1,11 @@
 @FinPair.ApiGateway_HostAddress = http://localhost:5194
 
-GET {{FinPair.ApiGateway_HostAddress}}/weatherforecast/
+GET {{FinPair.ApiGateway_HostAddress}}/
+Accept: application/json
+
+###
+
+GET {{FinPair.ApiGateway_HostAddress}}/health
 Accept: application/json
 
 ###

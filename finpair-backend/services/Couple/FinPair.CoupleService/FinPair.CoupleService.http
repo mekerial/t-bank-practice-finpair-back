@@ -1,6 +1,11 @@
 @FinPair.CoupleService_HostAddress = http://localhost:5116
 
-GET {{FinPair.CoupleService_HostAddress}}/weatherforecast/
+GET {{FinPair.CoupleService_HostAddress}}/
+Accept: application/json
+
+###
+
+GET {{FinPair.CoupleService_HostAddress}}/health
 Accept: application/json
 
 ###

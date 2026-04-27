@@ -1,0 +1,118 @@
+# Запуск: из корня репозитория — docker compose up --build
+# Локальные порты совпадают с launchSettings (HTTP), кроме контейнерного 8080.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: finpair
+    ports:
+      - "5432:5432"
+    volumes:
+      - finpair_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d finpair"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: gateways/FinPair.ApiGateway/FinPair.ApiGateway.csproj
+        ENTRY_DLL: FinPair.ApiGateway.dll
+    ports:
+      - "5194:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: services/Auth/FinPair.AuthService/FinPair.AuthService.csproj
+        ENTRY_DLL: FinPair.AuthService.dll
+    ports:
+      - "5222:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  analytics-service:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: services/Analytics/FinPair.AnalyticsService/FinPair.AnalyticsService.csproj
+        ENTRY_DLL: FinPair.AnalyticsService.dll
+    ports:
+      - "5053:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: unless-stopped
+
+  couple-service:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: services/Couple/FinPair.CoupleService/FinPair.CoupleService.csproj
+        ENTRY_DLL: FinPair.CoupleService.dll
+    ports:
+      - "5116:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: unless-stopped
+
+  finance-service:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: services/Finance/FinPair.FinanceService/FinPair.FinanceService.csproj
+        ENTRY_DLL: FinPair.FinanceService.dll
+    ports:
+      - "5071:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: unless-stopped
+
+  goal-service:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: services/Goals/FinPair.GoalService/FinPair.GoalService.csproj
+        ENTRY_DLL: FinPair.GoalService.dll
+    ports:
+      - "5232:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: unless-stopped
+
+  # На части сборок Windows порт 5000 занят системой — при ошибке bind смените, например, на "5002:8080".
+  support-service:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: services/Support/FinPair.SupportService/FinPair.SupportService.csproj
+        ENTRY_DLL: FinPair.SupportService.dll
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: unless-stopped
+
+volumes:
+  finpair_pgdata:

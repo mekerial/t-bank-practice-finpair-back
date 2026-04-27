@@ -1,6 +1,11 @@
 @FinPair.AuthService_HostAddress = http://localhost:5222
 
-GET {{FinPair.AuthService_HostAddress}}/weatherforecast/
+GET {{FinPair.AuthService_HostAddress}}/
+Accept: application/json
+
+###
+
+GET {{FinPair.AuthService_HostAddress}}/health
 Accept: application/json
 
 ###
