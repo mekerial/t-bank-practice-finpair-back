@@ -1,19 +1,17 @@
+using FinPair.Common;
 using FinPair.Infrastructure;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddFinPairSwagger("FinPair.AuthService");
 builder.Services.AddFinPairPersistence(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseFinPairSwaggerUi("FinPair.AuthService v1");
     app.MapGet("/dev/db-ping", async (NpgsqlDataSource dataSource) =>
     {
         await using var connection = await dataSource.OpenConnectionAsync();
