@@ -173,7 +173,7 @@ public sealed class CoupleRepository(NpgsqlDataSource dataSource)
         for (var attempt = 0; attempt < 10; attempt++)
         {
             var inviteCode = GenerateInviteCode();
-            if (await InviteCodeExistsAsync(connection, inviteCode, cancellationToken))
+            if (await InviteCodeExistsAsync(connection, null, inviteCode, cancellationToken))
             {
                 continue;
             }
@@ -246,7 +246,7 @@ public sealed class CoupleRepository(NpgsqlDataSource dataSource)
         for (var attempt = 0; attempt < 10; attempt++)
         {
             var inviteCode = GenerateInviteCode();
-            if (await InviteCodeExistsAsync(connection, inviteCode, cancellationToken))
+            if (await InviteCodeExistsAsync(connection, transaction, inviteCode, cancellationToken))
             {
                 continue;
             }
@@ -274,10 +274,12 @@ public sealed class CoupleRepository(NpgsqlDataSource dataSource)
 
     private static async Task<bool> InviteCodeExistsAsync(
         NpgsqlConnection connection,
+        NpgsqlTransaction? transaction,
         string inviteCode,
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT EXISTS (SELECT 1 FROM households WHERE invite_code = @invite_code);";
         command.Parameters.AddWithValue("invite_code", inviteCode);
 
