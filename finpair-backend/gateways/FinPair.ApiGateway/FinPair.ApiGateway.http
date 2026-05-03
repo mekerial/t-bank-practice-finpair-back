@@ -9,3 +9,15 @@ GET {{FinPair.ApiGateway_HostAddress}}/health
 Accept: application/json
 
 ###
+
+POST {{FinPair.ApiGateway_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "user@example.com",
+  "password": "StrongPass123!",
+  "name": "Partner A"
+}
+
+###

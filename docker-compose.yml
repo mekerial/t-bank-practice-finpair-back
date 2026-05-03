@@ -29,6 +29,9 @@ services:
       - "5194:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      Services__Auth__BaseUrl: http://auth-service:8080
+    depends_on:
+      - auth-service
     restart: unless-stopped
 
   auth-service:
@@ -43,6 +46,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+      Auth__SigningKey: finpair-local-development-signing-key-please-change
+      Auth__RefreshCookieSecure: "false"
     depends_on:
       postgres:
         condition: service_healthy

@@ -9,3 +9,40 @@ GET {{FinPair.AuthService_HostAddress}}/health
 Accept: application/json
 
 ###
+
+POST {{FinPair.AuthService_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "user@example.com",
+  "password": "StrongPass123!",
+  "name": "Partner A"
+}
+
+###
+
+POST {{FinPair.AuthService_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "user@example.com",
+  "password": "StrongPass123!"
+}
+
+###
+
+GET {{FinPair.AuthService_HostAddress}}/api/v1/auth/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+###
+
+POST {{FinPair.AuthService_HostAddress}}/api/v1/auth/refresh
+Accept: application/json
+
+###
+
+POST {{FinPair.AuthService_HostAddress}}/api/v1/auth/logout
+Accept: application/json
