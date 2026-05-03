@@ -9,3 +9,29 @@ GET {{FinPair.CoupleService_HostAddress}}/health
 Accept: application/json
 
 ###
+
+POST {{FinPair.CoupleService_HostAddress}}/api/v1/households/
+Content-Type: application/json
+
+{
+  "currency": "RUB",
+  "splitType": "equal"
+}
+
+###
+
+@householdId = 00000000-0000-0000-0000-000000000000
+
+GET {{FinPair.CoupleService_HostAddress}}/api/v1/households/{{householdId}}
+Accept: application/json
+
+###
+
+POST {{FinPair.CoupleService_HostAddress}}/api/v1/households/join
+Content-Type: application/json
+
+{
+  "inviteCode": "ABCDEF12"
+}
+
+###
