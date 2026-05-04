@@ -34,6 +34,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
 
 MapServiceProxy(app, "auth", "Auth", "auth");
 MapServiceProxy(app, "couple", "Couple", "couple");
+MapHouseholdTransactionsProxy(app);
+MapServiceProxy(app, "households", "Couple", "households");
 MapServiceProxy(app, "users", "Finance", "users");
 MapServiceProxy(app, "settings", "Finance", "settings");
 MapServiceProxy(app, "finance", "Finance", "finance");
@@ -44,6 +46,41 @@ MapServiceProxy(app, "analytics", "Analytics", "analytics");
 MapServiceProxy(app, "support", "Support", "support");
 
 app.Run();
+
+static void MapHouseholdTransactionsProxy(WebApplication app)
+{
+    string[] methods = ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"];
+
+    app.MapMethods(
+            "/api/v1/households/{householdId:guid}/transactions",
+            methods,
+            (HttpContext context, Guid householdId, IConfiguration configuration, HttpClient httpClient, CancellationToken cancellationToken) =>
+                ServiceProxy.ForwardAsync(
+                    context,
+                    "Finance",
+                    $"households/{householdId}/transactions",
+                    null,
+                    configuration,
+                    httpClient,
+                    cancellationToken))
+        .WithName("FinanceHouseholdTransactionsRootProxy")
+        .WithTags("Finance");
+
+    app.MapMethods(
+            "/api/v1/households/{householdId:guid}/transactions/{**path}",
+            methods,
+            (HttpContext context, Guid householdId, string? path, IConfiguration configuration, HttpClient httpClient, CancellationToken cancellationToken) =>
+                ServiceProxy.ForwardAsync(
+                    context,
+                    "Finance",
+                    $"households/{householdId}/transactions",
+                    path,
+                    configuration,
+                    httpClient,
+                    cancellationToken))
+        .WithName("FinanceHouseholdTransactionsProxy")
+        .WithTags("Finance");
+}
 
 static void MapServiceProxy(WebApplication app, string routePrefix, string serviceKey, string targetSegment)
 {
