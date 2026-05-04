@@ -9,3 +9,25 @@ GET {{FinPair.FinanceService_HostAddress}}/health
 Accept: application/json
 
 ###
+
+@financeHouseholdId = 00000000-0000-0000-0000-000000000000
+@financeUserId = 00000000-0000-0000-0000-000000000001
+
+GET {{FinPair.FinanceService_HostAddress}}/api/v1/households/{{financeHouseholdId}}/transactions
+Accept: application/json
+
+###
+
+POST {{FinPair.FinanceService_HostAddress}}/api/v1/households/{{financeHouseholdId}}/transactions
+Content-Type: application/json
+
+{
+  "userId": "{{financeUserId}}",
+  "categoryId": null,
+  "type": "expense",
+  "amount": 1500.50,
+  "description": "Продукты",
+  "date": "2026-05-04"
+}
+
+###

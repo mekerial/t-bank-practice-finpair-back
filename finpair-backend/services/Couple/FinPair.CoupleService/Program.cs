@@ -5,7 +5,17 @@ using FinPair.Infrastructure.Auth;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+const string CorsPolicyName = "FinPairCors";
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy.WithOrigins(GetAllowedOrigins(builder.Configuration))
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddFinPairSwagger("FinPair.CoupleService");
 builder.Services.AddFinPairPersistence(builder.Configuration);
 builder.Services.AddFinPairAccessTokenAuth(builder.Configuration);
