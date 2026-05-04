@@ -1,4 +1,5 @@
 using FinPair.Contracts;
+using FinPair.Contracts.Validation;
 using FinPair.Infrastructure.Auth;
 
 namespace FinPair.SupportService.Support;
@@ -47,13 +48,14 @@ public static class SupportEndpoints
         SupportRepository repository,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Message))
+        var validationErrors = ValidateMessage(request);
+        if (validationErrors.Count > 0)
         {
             return Results.Json(
                 ApiResponse<object>.Fail(
                     "VALIDATION_ERROR",
                     "Invalid request.",
-                    new Dictionary<string, string[]> { ["message"] = ["Message is required."] }),
+                    validationErrors),
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
@@ -61,9 +63,17 @@ public static class SupportEndpoints
         var ticket = await repository.CreateMessageAsync(
             userId,
             request.Subject?.Trim() ?? string.Empty,
-            request.Message.Trim(),
+            request.Message!.Trim(),
             cancellationToken);
 
         return Results.Json(ApiResponse<SupportTicketResult>.Ok(ticket), statusCode: StatusCodes.Status201Created);
+    }
+
+    private static IReadOnlyDictionary<string, string[]> ValidateMessage(CreateSupportMessageRequest request)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalText(errors, "subject", request.Subject, maxLength: 120);
+        DomainValidation.RequiredText(errors, "message", request.Message, maxLength: 2000);
+        return errors.ToDictionary();
     }
 }

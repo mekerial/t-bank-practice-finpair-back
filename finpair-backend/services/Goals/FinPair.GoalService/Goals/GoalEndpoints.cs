@@ -1,4 +1,5 @@
 using FinPair.Contracts;
+using FinPair.Contracts.Validation;
 using FinPair.Infrastructure.Auth;
 
 namespace FinPair.GoalService.Goals;
@@ -162,16 +163,16 @@ public static class GoalEndpoints
             return Unauthorized();
         }
 
-        if (request.Amount is null or <= 0)
+        var validationErrors = ValidateContribution(request);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["amount"] = ["Amount must be greater than 0."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
         var result = await repository.AddContributionAsync(
             userId,
             goalId,
-            request.Amount.Value,
+            request.Amount.GetValueOrDefault(),
             request.Date ?? DateOnly.FromDateTime(DateTime.UtcNow),
             cancellationToken);
 
@@ -186,51 +187,55 @@ public static class GoalEndpoints
         };
     }
 
-    private static Dictionary<string, string[]> ValidateCreateGoal(CreateGoalRequest request)
+    private static IReadOnlyDictionary<string, string[]> ValidateCreateGoal(CreateGoalRequest request)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(request.Title))
-        {
-            errors["title"] = ["Title is required."];
-        }
-
-        if (request.TargetAmount is null or <= 0)
-        {
-            errors["targetAmount"] = ["Target amount must be greater than 0."];
-        }
-
-        if (request.CurrentAmount is < 0)
-        {
-            errors["currentAmount"] = ["Current amount must be greater than or equal to 0."];
-        }
-
-        if (request.MonthlyContribution is < 0)
-        {
-            errors["monthlyContribution"] = ["Monthly contribution must be greater than or equal to 0."];
-        }
-
-        return errors;
+        var errors = new ValidationErrors();
+        DomainValidation.RequiredText(errors, "title", request.Title, maxLength: 120);
+        DomainValidation.RequiredMoney(errors, "targetAmount", request.TargetAmount);
+        DomainValidation.OptionalMoney(errors, "currentAmount", request.CurrentAmount, allowZero: true);
+        DomainValidation.OptionalMoney(errors, "monthlyContribution", request.MonthlyContribution, allowZero: true);
+        DomainValidation.OptionalDate(errors, "deadline", request.Deadline);
+        ValidateGoalAmounts(errors, request.TargetAmount, request.CurrentAmount);
+        return errors.ToDictionary();
     }
 
-    private static Dictionary<string, string[]> ValidateUpdateGoal(UpdateGoalRequest request)
+    private static IReadOnlyDictionary<string, string[]> ValidateUpdateGoal(UpdateGoalRequest request)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (request.TargetAmount is <= 0)
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalText(errors, "title", request.Title, maxLength: 120, allowBlank: false);
+        DomainValidation.OptionalMoney(errors, "targetAmount", request.TargetAmount);
+        DomainValidation.OptionalMoney(errors, "currentAmount", request.CurrentAmount, allowZero: true);
+        DomainValidation.OptionalMoney(errors, "monthlyContribution", request.MonthlyContribution, allowZero: true);
+        DomainValidation.OptionalDate(errors, "deadline", request.Deadline);
+        ValidateGoalAmounts(errors, request.TargetAmount, request.CurrentAmount);
+
+        if (request.Title is null &&
+            request.TargetAmount is null &&
+            request.CurrentAmount is null &&
+            request.MonthlyContribution is null &&
+            request.Deadline is null &&
+            request.IsShared is null)
         {
-            errors["targetAmount"] = ["Target amount must be greater than 0."];
+            errors.Add("request", "At least one goal field must be provided.");
         }
 
-        if (request.CurrentAmount is < 0)
-        {
-            errors["currentAmount"] = ["Current amount must be greater than or equal to 0."];
-        }
+        return errors.ToDictionary();
+    }
 
-        if (request.MonthlyContribution is < 0)
-        {
-            errors["monthlyContribution"] = ["Monthly contribution must be greater than or equal to 0."];
-        }
+    private static IReadOnlyDictionary<string, string[]> ValidateContribution(AddGoalContributionRequest request)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.RequiredMoney(errors, "amount", request.Amount);
+        DomainValidation.OptionalDate(errors, "date", request.Date);
+        return errors.ToDictionary();
+    }
 
-        return errors;
+    private static void ValidateGoalAmounts(ValidationErrors errors, decimal? targetAmount, decimal? currentAmount)
+    {
+        if (targetAmount is not null && currentAmount is not null && currentAmount > targetAmount)
+        {
+            errors.Add("currentAmount", "Current amount must be less than or equal to target amount.");
+        }
     }
 
     private static IResult Unauthorized() =>

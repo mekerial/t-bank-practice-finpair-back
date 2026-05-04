@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\building-blocks\FinPair.Contracts\FinPair.Contracts.csproj" />
     <ProjectReference Include="..\..\services\Auth\FinPair.AuthService\FinPair.AuthService.csproj" />
   </ItemGroup>
 

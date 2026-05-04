@@ -1,5 +1,5 @@
-using System.Net.Mail;
 using System.Security.Claims;
+using FinPair.Contracts.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -56,7 +56,7 @@ public static class AuthEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var validationErrors = ValidateEmailAndPassword(request.Email, request.Password);
+        var validationErrors = ValidateEmailAndPassword(request.Email, request.Password, request.Name);
         if (validationErrors.Count > 0)
         {
             return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
@@ -277,36 +277,17 @@ public static class AuthEndpoints
     private static UserSummary ToUserSummary(UserRecord user) =>
         new(user.Id, user.Email, user.EmailVerified, user.HouseholdId is not null);
 
-    private static Dictionary<string, string[]> ValidateEmailAndPassword(string? email, string? password)
+    private static IReadOnlyDictionary<string, string[]> ValidateEmailAndPassword(
+        string? email,
+        string? password,
+        string? name = null)
     {
-        var errors = new Dictionary<string, string[]>();
+        var errors = new ValidationErrors();
+        DomainValidation.RequireEmail(errors, "email", email);
+        DomainValidation.RequirePassword(errors, "password", password);
+        DomainValidation.OptionalText(errors, "name", name, maxLength: 100);
 
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            errors["email"] = ["Email is required."];
-        }
-        else
-        {
-            try
-            {
-                _ = new MailAddress(email);
-            }
-            catch (FormatException)
-            {
-                errors["email"] = ["Email is invalid."];
-            }
-        }
-
-        if (string.IsNullOrEmpty(password))
-        {
-            errors["password"] = ["Password is required."];
-        }
-        else if (password.Length < 8)
-        {
-            errors["password"] = ["Password must contain at least 8 characters."];
-        }
-
-        return errors;
+        return errors.ToDictionary();
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
