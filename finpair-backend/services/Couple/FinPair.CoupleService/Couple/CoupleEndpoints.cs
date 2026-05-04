@@ -1,18 +1,11 @@
 using FinPair.Contracts;
+using FinPair.Contracts.Validation;
 using FinPair.Infrastructure.Auth;
 
 namespace FinPair.CoupleService.Couple;
 
 public static class CoupleEndpoints
 {
-    private static readonly HashSet<string> AllowedSplitTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "equal",
-        "income",
-        "income_ratio",
-        "custom"
-    };
-
     public static RouteGroupBuilder MapCoupleEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/couple").WithTags("Couple");
@@ -77,13 +70,13 @@ public static class CoupleEndpoints
             return Unauthorized();
         }
 
-        if (string.IsNullOrWhiteSpace(request.InviteCode))
+        var validationErrors = ValidateJoin(request);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["inviteCode"] = ["Invite code is required."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
-        var result = await repository.JoinAsync(userId, request.InviteCode, cancellationToken);
+        var result = await repository.JoinAsync(userId, request.InviteCode!, cancellationToken);
         return result.Status switch
         {
             CoupleMutationStatus.Success => Results.Json(
@@ -122,7 +115,8 @@ public static class CoupleEndpoints
             new UpdateCoupleSettingsRequest(request.SplitType, null, null),
             httpContext,
             repository,
-            cancellationToken);
+            cancellationToken,
+            requireSplitType: true);
     }
 
     private static Task<IResult> UpdateSettingsAsync(
@@ -138,17 +132,18 @@ public static class CoupleEndpoints
         UpdateCoupleSettingsRequest request,
         HttpContext httpContext,
         CoupleRepository repository,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool requireSplitType = false)
     {
         if (!httpContext.TryGetUserId(out var userId))
         {
             return Unauthorized();
         }
 
-        if (!string.IsNullOrWhiteSpace(request.SplitType) && !AllowedSplitTypes.Contains(request.SplitType))
+        var validationErrors = ValidateSettings(request, requireSplitType);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["splitType"] = ["Split type must be equal, income, income_ratio or custom."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
         var household = await repository.UpdateSettingsAsync(
@@ -185,6 +180,42 @@ public static class CoupleEndpoints
 
     private static IResult Unauthorized() =>
         Error("UNAUTHORIZED", "Bearer access token is required.", StatusCodes.Status401Unauthorized);
+
+    private static IReadOnlyDictionary<string, string[]> ValidateJoin(JoinCoupleRequest request)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.RequireInviteCode(errors, "inviteCode", request.InviteCode);
+        return errors.ToDictionary();
+    }
+
+    private static IReadOnlyDictionary<string, string[]> ValidateSettings(
+        UpdateCoupleSettingsRequest request,
+        bool requireSplitType)
+    {
+        var errors = new ValidationErrors();
+
+        if (requireSplitType)
+        {
+            DomainValidation.RequireSplitType(errors, "splitType", request.SplitType);
+        }
+        else
+        {
+            DomainValidation.OptionalSplitType(errors, "splitType", request.SplitType);
+        }
+
+        DomainValidation.OptionalCurrency(errors, "currency", request.Currency);
+        DomainValidation.OptionalNotifications(errors, "notifications", request.Notifications);
+
+        if (!requireSplitType &&
+            string.IsNullOrWhiteSpace(request.SplitType) &&
+            string.IsNullOrWhiteSpace(request.Currency) &&
+            request.Notifications is null)
+        {
+            errors.Add("request", "At least one setting must be provided.");
+        }
+
+        return errors.ToDictionary();
+    }
 
     private static IResult Error(
         string code,

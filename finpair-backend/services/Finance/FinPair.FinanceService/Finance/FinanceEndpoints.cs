@@ -1,16 +1,11 @@
 using FinPair.Contracts;
+using FinPair.Contracts.Validation;
 using FinPair.Infrastructure.Auth;
 
 namespace FinPair.FinanceService.Finance;
 
 public static class FinanceEndpoints
 {
-    private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "income",
-        "expense"
-    };
-
     public static IEndpointRouteBuilder MapFinanceEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api/v1");
@@ -104,13 +99,13 @@ public static class FinanceEndpoints
             return Unauthorized();
         }
 
-        if (request.Income is null or < 0)
+        var validationErrors = ValidateUserProfile(request);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["income"] = ["Income must be greater than or equal to 0."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
-        var profile = await repository.UpdateUserProfileAsync(userId, request.Income.Value, cancellationToken);
+        var profile = await repository.UpdateUserProfileAsync(userId, request.Income.GetValueOrDefault(), cancellationToken);
         return profile is null
             ? Error("UNAUTHORIZED", "User was not found.", StatusCodes.Status401Unauthorized)
             : Results.Json(ApiResponse<UserProfileResult>.Ok(profile));
@@ -143,10 +138,10 @@ public static class FinanceEndpoints
             return Unauthorized();
         }
 
-        if (request.Income is < 0)
+        var validationErrors = ValidateFinanceProfile(request);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["income"] = ["Income must be greater than or equal to 0."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
         var profile = await repository.UpdateFinanceProfileAsync(
@@ -186,6 +181,12 @@ public static class FinanceEndpoints
         if (!httpContext.TryGetUserId(out var userId))
         {
             return Unauthorized();
+        }
+
+        var validationErrors = ValidateSettings(request);
+        if (validationErrors.Count > 0)
+        {
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
         var settings = await repository.UpdateSettingsAsync(
@@ -238,14 +239,13 @@ public static class FinanceEndpoints
             return Unauthorized();
         }
 
-        var query = ParseTransactionQuery(request);
-        if (!string.IsNullOrWhiteSpace(query.Type) && !AllowedTypes.Contains(query.Type))
+        var (query, validationErrors) = ParseTransactionQuery(request);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["type"] = ["Type must be income or expense."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
-        var transactions = await repository.GetTransactionsAsync(userId, query, cancellationToken);
+        var transactions = await repository.GetTransactionsAsync(userId, query!, cancellationToken);
         return transactions is null
             ? Error("NOT_FOUND", "Household was not found.", StatusCodes.Status404NotFound)
             : Results.Json(ApiResponse<PagedItemsResponse<TransactionDto>>.Ok(transactions));
@@ -322,7 +322,14 @@ public static class FinanceEndpoints
         FinanceRepository repository,
         CancellationToken cancellationToken)
     {
-        var categories = await repository.GetCategoriesAsync(QueryValue(request, "type"), cancellationToken);
+        var type = QueryValue(request, "type");
+        var validationErrors = ValidateCategoryTypeFilter(type);
+        if (validationErrors.Count > 0)
+        {
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
+        }
+
+        var categories = await repository.GetCategoriesAsync(type, cancellationToken);
         return Results.Json(ApiResponse<ItemsResponse<CategoryDto>>.Ok(new ItemsResponse<CategoryDto>(categories)));
     }
 
@@ -354,10 +361,10 @@ public static class FinanceEndpoints
         FinanceRepository repository,
         CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(request.Type) && !AllowedTypes.Contains(request.Type))
+        var validationErrors = ValidateUpdateCategory(request);
+        if (validationErrors.Count > 0)
         {
-            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest,
-                new Dictionary<string, string[]> { ["type"] = ["Type must be income or expense."] });
+            return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
         var category = await repository.UpdateCategoryAsync(categoryId, request.Name, request.Type, cancellationToken);
@@ -397,79 +404,174 @@ public static class FinanceEndpoints
             : Results.Json(ApiResponse<DashboardResult>.Ok(dashboard));
     }
 
-    private static Dictionary<string, string[]> ValidateCreateTransaction(CreateTransactionRequest request)
+    private static IReadOnlyDictionary<string, string[]> ValidateUserProfile(UpdateUserProfileRequest request)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(request.Type) || !AllowedTypes.Contains(request.Type))
+        var errors = new ValidationErrors();
+        DomainValidation.RequiredMoney(errors, "income", request.Income, allowZero: true);
+        return errors.ToDictionary();
+    }
+
+    private static IReadOnlyDictionary<string, string[]> ValidateFinanceProfile(UpdateFinanceProfileRequest request)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalMoney(errors, "income", request.Income, allowZero: true);
+        DomainValidation.OptionalCurrency(errors, "currency", request.Currency);
+        DomainValidation.OptionalNotifications(errors, "notifications", request.Notifications);
+
+        if (request.Income is null &&
+            string.IsNullOrWhiteSpace(request.Currency) &&
+            request.Notifications is null)
         {
-            errors["type"] = ["Type must be income or expense."];
+            errors.Add("request", "At least one profile field must be provided.");
         }
 
-        if (request.Amount is null or <= 0)
+        return errors.ToDictionary();
+    }
+
+    private static IReadOnlyDictionary<string, string[]> ValidateSettings(UpdateSettingsRequest request)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalCurrency(errors, "currency", request.Currency);
+        DomainValidation.OptionalNotifications(errors, "notifications", request.Notifications);
+
+        if (string.IsNullOrWhiteSpace(request.Currency) && request.Notifications is null)
         {
-            errors["amount"] = ["Amount must be greater than 0."];
+            errors.Add("request", "At least one setting must be provided.");
         }
 
-        if (request.Date is null)
+        return errors.ToDictionary();
+    }
+
+    private static IReadOnlyDictionary<string, string[]> ValidateCreateTransaction(CreateTransactionRequest request)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.RequireTransactionType(errors, "type", request.Type);
+        DomainValidation.RequiredMoney(errors, "amount", request.Amount);
+        DomainValidation.RequiredDate(errors, "date", request.Date);
+        DomainValidation.OptionalText(errors, "description", request.Description, maxLength: 500);
+        DomainValidation.OptionalText(errors, "title", request.Title, maxLength: 200);
+        DomainValidation.OptionalText(errors, "category", request.Category, maxLength: 64, allowBlank: false);
+
+        if (request.CategoryId == Guid.Empty)
         {
-            errors["date"] = ["Date is required."];
+            errors.Add("categoryId", "CategoryId is invalid.");
         }
 
         if (request.CategoryId is null && string.IsNullOrWhiteSpace(request.Category))
         {
-            errors["category"] = ["Category is required."];
+            errors.Add("category", "Category is required.");
         }
 
-        return errors;
+        return errors.ToDictionary();
     }
 
-    private static Dictionary<string, string[]> ValidateUpdateTransaction(UpdateTransactionRequest request)
+    private static IReadOnlyDictionary<string, string[]> ValidateUpdateTransaction(UpdateTransactionRequest request)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (!string.IsNullOrWhiteSpace(request.Type) && !AllowedTypes.Contains(request.Type))
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalTransactionType(errors, "type", request.Type);
+        DomainValidation.OptionalMoney(errors, "amount", request.Amount);
+        DomainValidation.OptionalDate(errors, "date", request.Date);
+        DomainValidation.OptionalText(errors, "description", request.Description, maxLength: 500);
+        DomainValidation.OptionalText(errors, "title", request.Title, maxLength: 200);
+        DomainValidation.OptionalText(errors, "category", request.Category, maxLength: 64, allowBlank: false);
+
+        if (request.CategoryId == Guid.Empty)
         {
-            errors["type"] = ["Type must be income or expense."];
+            errors.Add("categoryId", "CategoryId is invalid.");
         }
 
-        if (request.Amount is <= 0)
+        if (string.IsNullOrWhiteSpace(request.Type) &&
+            request.CategoryId is null &&
+            request.Category is null &&
+            request.Amount is null &&
+            request.Description is null &&
+            request.Title is null &&
+            request.Date is null)
         {
-            errors["amount"] = ["Amount must be greater than 0."];
+            errors.Add("request", "At least one transaction field must be provided.");
         }
 
-        return errors;
+        return errors.ToDictionary();
     }
 
-    private static Dictionary<string, string[]> ValidateCategory(string? name, string? type)
+    private static IReadOnlyDictionary<string, string[]> ValidateCategory(string? name, string? type)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            errors["name"] = ["Name is required."];
-        }
+        var errors = new ValidationErrors();
+        DomainValidation.RequiredText(errors, "name", name, maxLength: 64);
+        DomainValidation.RequireTransactionType(errors, "type", type);
 
-        if (string.IsNullOrWhiteSpace(type) || !AllowedTypes.Contains(type))
-        {
-            errors["type"] = ["Type must be income or expense."];
-        }
-
-        return errors;
+        return errors.ToDictionary();
     }
 
-    private static TransactionQuery ParseTransactionQuery(HttpRequest request)
+    private static IReadOnlyDictionary<string, string[]> ValidateUpdateCategory(UpdateCategoryRequest request)
     {
-        var page = ParsePositiveInt(QueryValue(request, "page"), 1);
-        var pageSize = Math.Clamp(ParsePositiveInt(QueryValue(request, "pageSize"), 20), 1, 100);
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalText(errors, "name", request.Name, maxLength: 64, allowBlank: false);
+        DomainValidation.OptionalTransactionType(errors, "type", request.Type);
 
-        return new TransactionQuery(
-            QueryValue(request, "type"),
-            QueryValue(request, "category"),
-            ParseGuid(QueryValue(request, "user_id") ?? QueryValue(request, "userId")),
-            ParseDate(QueryValue(request, "from") ?? QueryValue(request, "dateFrom")),
-            ParseDate(QueryValue(request, "to") ?? QueryValue(request, "dateTo")),
+        if (request.Name is null && request.Type is null)
+        {
+            errors.Add("request", "At least one category field must be provided.");
+        }
+
+        return errors.ToDictionary();
+    }
+
+    private static IReadOnlyDictionary<string, string[]> ValidateCategoryTypeFilter(string? type)
+    {
+        var errors = new ValidationErrors();
+        DomainValidation.OptionalTransactionType(errors, "type", type);
+        return errors.ToDictionary();
+    }
+
+    private static (TransactionQuery? Query, IReadOnlyDictionary<string, string[]> Errors) ParseTransactionQuery(HttpRequest request)
+    {
+        var errors = new ValidationErrors();
+        var page = ParsePositiveInt(QueryValue(request, "page"), "page", 1, errors);
+        var pageSize = ParsePositiveInt(QueryValue(request, "pageSize"), "pageSize", 20, errors, max: 100);
+        var userId = ParseGuid(QueryValue(request, "user_id") ?? QueryValue(request, "userId"), "userId", errors);
+        var from = ParseDate(QueryValue(request, "from") ?? QueryValue(request, "dateFrom"), "from", errors);
+        var to = ParseDate(QueryValue(request, "to") ?? QueryValue(request, "dateTo"), "to", errors);
+        var type = QueryValue(request, "type");
+        var category = QueryValue(request, "category");
+        var sortBy = QueryValue(request, "sortBy");
+        var sortOrder = QueryValue(request, "sortOrder");
+
+        DomainValidation.OptionalTransactionType(errors, "type", type);
+        DomainValidation.OptionalText(errors, "category", category, maxLength: 64, allowBlank: false);
+
+        if (!DomainValidation.IsSortField(sortBy))
+        {
+            errors.Add("sortBy", "Sort field must be date, amount or created_at.");
+        }
+
+        if (!DomainValidation.IsSortOrder(sortOrder))
+        {
+            errors.Add("sortOrder", "Sort order must be asc or desc.");
+        }
+
+        if (from is not null && to is not null && from > to)
+        {
+            errors.Add("dateRange", "From date must be less than or equal to to date.");
+        }
+
+        if (errors.HasErrors)
+        {
+            return (null, errors.ToDictionary());
+        }
+
+        var query = new TransactionQuery(
+            type,
+            category,
+            userId,
+            from,
+            to,
             page,
             pageSize,
-            NormalizeSortBy(QueryValue(request, "sortBy")),
-            string.Equals(QueryValue(request, "sortOrder"), "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc");
+            NormalizeSortBy(sortBy),
+            string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc");
+
+        return (query, errors.ToDictionary());
     }
 
     private static string NormalizeSortBy(string? sortBy) =>
@@ -485,14 +587,64 @@ public static class FinanceEndpoints
             ? value.ToString()
             : null;
 
-    private static int ParsePositiveInt(string? value, int fallback) =>
-        int.TryParse(value, out var parsed) && parsed > 0 ? parsed : fallback;
+    private static int ParsePositiveInt(
+        string? value,
+        string field,
+        int fallback,
+        ValidationErrors errors,
+        int? max = null)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
 
-    private static Guid? ParseGuid(string? value) =>
-        Guid.TryParse(value, out var parsed) ? parsed : null;
+        if (!int.TryParse(value, out var parsed) || parsed <= 0)
+        {
+            errors.Add(field, $"{field} must be a positive integer.");
+            return fallback;
+        }
 
-    private static DateOnly? ParseDate(string? value) =>
-        DateOnly.TryParse(value, out var parsed) ? parsed : null;
+        if (max is not null && parsed > max.Value)
+        {
+            errors.Add(field, $"{field} must be less than or equal to {max.Value}.");
+            return max.Value;
+        }
+
+        return parsed;
+    }
+
+    private static Guid? ParseGuid(string? value, string field, ValidationErrors errors)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!Guid.TryParse(value, out var parsed) || parsed == Guid.Empty)
+        {
+            errors.Add(field, $"{field} must be a valid UUID.");
+            return null;
+        }
+
+        return parsed;
+    }
+
+    private static DateOnly? ParseDate(string? value, string field, ValidationErrors errors)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!DateOnly.TryParse(value, out var parsed))
+        {
+            errors.Add(field, $"{field} must be a valid ISO date.");
+            return null;
+        }
+
+        return parsed;
+    }
 
     private static IResult Unauthorized() =>
         Error("UNAUTHORIZED", "Bearer access token is required.", StatusCodes.Status401Unauthorized);
