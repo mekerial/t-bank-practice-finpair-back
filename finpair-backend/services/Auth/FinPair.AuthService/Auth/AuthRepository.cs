@@ -1,3 +1,4 @@
+using FinPair.Infrastructure;
 using Npgsql;
 
 namespace FinPair.AuthService.Auth;
@@ -8,46 +9,8 @@ public sealed record RefreshTokenRecord(Guid Id, Guid UserId, string TokenHash, 
 
 public sealed class AuthRepository(NpgsqlDataSource dataSource)
 {
-    public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
-    {
-        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE IF NOT EXISTS users (
-                id uuid PRIMARY KEY,
-                email text NOT NULL,
-                password_hash text NOT NULL,
-                name text NOT NULL DEFAULT '',
-                household_id uuid NULL,
-                email_verified boolean NOT NULL DEFAULT false,
-                created_at timestamptz NOT NULL DEFAULT now(),
-                updated_at timestamptz NOT NULL DEFAULT now()
-            );
-
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash text;
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT '';
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS household_id uuid NULL;
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false;
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
-
-            CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_lower ON users (lower(email));
-
-            CREATE TABLE IF NOT EXISTS refresh_tokens (
-                id uuid PRIMARY KEY,
-                user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                token_hash text NOT NULL UNIQUE,
-                expires_at timestamptz NOT NULL,
-                revoked_at timestamptz NULL,
-                created_at timestamptz NOT NULL DEFAULT now()
-            );
-
-            CREATE INDEX IF NOT EXISTS ix_refresh_tokens_user_id ON refresh_tokens(user_id);
-            CREATE INDEX IF NOT EXISTS ix_refresh_tokens_expires_at ON refresh_tokens(expires_at);
-            """;
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
+    public Task EnsureSchemaAsync(CancellationToken cancellationToken = default) =>
+        FinPairSchema.EnsureCoreSchemaAsync(dataSource, cancellationToken);
 
     public async Task<UserRecord?> CreateUserAsync(string email, string passwordHash, string? name, CancellationToken cancellationToken)
     {
