@@ -4,10 +4,10 @@ using NpgsqlTypes;
 
 namespace FinPair.SupportService.Support;
 
-public sealed class SupportRepository(NpgsqlDataSource dataSource)
+public sealed class SupportRepository(NpgsqlDataSource dataSource, PostgresConnectionString postgres)
 {
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default) =>
-        FinPairSchema.EnsureCoreSchemaAsync(dataSource, cancellationToken);
+        FinPairSchema.EnsureCoreSchemaAsync(postgres, cancellationToken);
 
     public async Task<SupportTicketResult> CreateMessageAsync(
         Guid? userId,

@@ -7,10 +7,10 @@ public sealed record UserRecord(Guid Id, string Email, string PasswordHash, stri
 
 public sealed record RefreshTokenRecord(Guid Id, Guid UserId, string TokenHash, DateTimeOffset ExpiresAt, DateTimeOffset? RevokedAt);
 
-public sealed class AuthRepository(NpgsqlDataSource dataSource)
+public sealed class AuthRepository(NpgsqlDataSource dataSource, PostgresConnectionString postgres)
 {
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default) =>
-        FinPairSchema.EnsureCoreSchemaAsync(dataSource, cancellationToken);
+        FinPairSchema.EnsureCoreSchemaAsync(postgres, cancellationToken);
 
     public async Task<UserRecord?> CreateUserAsync(string email, string passwordHash, string? name, CancellationToken cancellationToken)
     {

@@ -9,6 +9,7 @@ WORKDIR /src
 COPY building-blocks/ building-blocks/
 COPY gateways/ gateways/
 COPY services/ services/
+COPY tools/ tools/
 
 ARG PROJECT_FILE
 RUN test -n "$PROJECT_FILE" || (echo "ARG PROJECT_FILE is required" >&2 && exit 1)

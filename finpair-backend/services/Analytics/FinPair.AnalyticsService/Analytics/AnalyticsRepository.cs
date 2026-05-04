@@ -3,10 +3,10 @@ using Npgsql;
 
 namespace FinPair.AnalyticsService.Analytics;
 
-public sealed class AnalyticsRepository(NpgsqlDataSource dataSource)
+public sealed class AnalyticsRepository(NpgsqlDataSource dataSource, PostgresConnectionString postgres)
 {
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default) =>
-        FinPairSchema.EnsureCoreSchemaAsync(dataSource, cancellationToken);
+        FinPairSchema.EnsureCoreSchemaAsync(postgres, cancellationToken);
 
     public async Task<SummaryResult?> GetSummaryAsync(Guid userId, CancellationToken cancellationToken)
     {

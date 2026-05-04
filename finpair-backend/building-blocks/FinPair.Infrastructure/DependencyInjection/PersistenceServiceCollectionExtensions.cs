@@ -11,6 +11,7 @@ public static class PersistenceServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("Задайте строку подключения ConnectionStrings:Postgres (см. appsettings).");
 
+        services.AddSingleton(new PostgresConnectionString(connectionString));
         services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
 
         return services;

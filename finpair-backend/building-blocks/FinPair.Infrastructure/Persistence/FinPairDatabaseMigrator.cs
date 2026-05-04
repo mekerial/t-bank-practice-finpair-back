@@ -1,5 +1,4 @@
 using DbUp;
-using Npgsql;
 
 namespace FinPair.Infrastructure;
 
@@ -24,10 +23,10 @@ public static class FinPairDatabaseMigrator
             throw result.Error;
     }
 
-    public static Task UpgradeAsync(NpgsqlDataSource dataSource, CancellationToken cancellationToken = default)
+    public static Task UpgradeAsync(PostgresConnectionString connectionString, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Upgrade(dataSource.ConnectionString);
+        Upgrade(connectionString.Value);
         return Task.CompletedTask;
     }
 

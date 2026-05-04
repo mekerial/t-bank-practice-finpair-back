@@ -4,10 +4,10 @@ using NpgsqlTypes;
 
 namespace FinPair.GoalService.Goals;
 
-public sealed class GoalRepository(NpgsqlDataSource dataSource)
+public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnectionString postgres)
 {
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default) =>
-        FinPairSchema.EnsureCoreSchemaAsync(dataSource, cancellationToken);
+        FinPairSchema.EnsureCoreSchemaAsync(postgres, cancellationToken);
 
     public async Task<IReadOnlyList<GoalDto>?> GetGoalsAsync(Guid userId, CancellationToken cancellationToken)
     {

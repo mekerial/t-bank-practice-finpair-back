@@ -1,9 +1,7 @@
-using Npgsql;
-
 namespace FinPair.Infrastructure;
 
 public static class FinPairSchema
 {
-    public static Task EnsureCoreSchemaAsync(NpgsqlDataSource dataSource, CancellationToken cancellationToken = default) =>
-        FinPairDatabaseMigrator.UpgradeAsync(dataSource, cancellationToken);
+    public static Task EnsureCoreSchemaAsync(PostgresConnectionString connectionString, CancellationToken cancellationToken = default) =>
+        FinPairDatabaseMigrator.UpgradeAsync(connectionString, cancellationToken);
 }
