@@ -30,8 +30,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Services__Auth__BaseUrl: http://auth-service:8080
+      Services__Couple__BaseUrl: http://couple-service:8080
+      Services__Finance__BaseUrl: http://finance-service:8080
+      Services__Goals__BaseUrl: http://goal-service:8080
+      Services__Analytics__BaseUrl: http://analytics-service:8080
+      Services__Support__BaseUrl: http://support-service:8080
     depends_on:
       - auth-service
+      - couple-service
+      - finance-service
+      - goal-service
+      - analytics-service
+      - support-service
     restart: unless-stopped
 
   auth-service:
@@ -64,6 +74,11 @@ services:
       - "5053:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+      Auth__SigningKey: finpair-local-development-signing-key-please-change
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   couple-service:
@@ -77,6 +92,11 @@ services:
       - "5116:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+      Auth__SigningKey: finpair-local-development-signing-key-please-change
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   finance-service:
@@ -90,6 +110,11 @@ services:
       - "5071:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+      Auth__SigningKey: finpair-local-development-signing-key-please-change
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   goal-service:
@@ -103,6 +128,11 @@ services:
       - "5232:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+      Auth__SigningKey: finpair-local-development-signing-key-please-change
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   # На части сборок Windows порт 5000 занят системой — при ошибке bind смените, например, на "5002:8080".
@@ -117,6 +147,11 @@ services:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
+      Auth__SigningKey: finpair-local-development-signing-key-please-change
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

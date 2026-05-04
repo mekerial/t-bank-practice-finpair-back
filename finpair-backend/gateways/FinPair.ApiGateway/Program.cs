@@ -31,14 +31,40 @@ app.MapGet("/", () => Results.Ok(new { service = "FinPair.ApiGateway", product =
     .WithName("Root");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .WithName("Health");
-app.MapMethods(
-    "/api/v1/auth/{**path}",
-    ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    AuthProxy.ForwardAsync)
-    .WithName("AuthProxy")
-    .WithTags("Auth");
+
+MapServiceProxy(app, "auth", "Auth", "auth");
+MapServiceProxy(app, "couple", "Couple", "couple");
+MapServiceProxy(app, "users", "Finance", "users");
+MapServiceProxy(app, "settings", "Finance", "settings");
+MapServiceProxy(app, "finance", "Finance", "finance");
+MapServiceProxy(app, "transactions", "Finance", "transactions");
+MapServiceProxy(app, "categories", "Finance", "categories");
+MapServiceProxy(app, "goals", "Goals", "goals");
+MapServiceProxy(app, "analytics", "Analytics", "analytics");
+MapServiceProxy(app, "support", "Support", "support");
 
 app.Run();
+
+static void MapServiceProxy(WebApplication app, string routePrefix, string serviceKey, string targetSegment)
+{
+    string[] methods = ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"];
+
+    app.MapMethods(
+            $"/api/v1/{routePrefix}",
+            methods,
+            (HttpContext context, IConfiguration configuration, HttpClient httpClient, CancellationToken cancellationToken) =>
+                ServiceProxy.ForwardAsync(context, serviceKey, targetSegment, null, configuration, httpClient, cancellationToken))
+        .WithName($"{serviceKey}{routePrefix}RootProxy")
+        .WithTags(serviceKey);
+
+    app.MapMethods(
+            $"/api/v1/{routePrefix}/{{**path}}",
+            methods,
+            (HttpContext context, string? path, IConfiguration configuration, HttpClient httpClient, CancellationToken cancellationToken) =>
+                ServiceProxy.ForwardAsync(context, serviceKey, targetSegment, path, configuration, httpClient, cancellationToken))
+        .WithName($"{serviceKey}{routePrefix}Proxy")
+        .WithTags(serviceKey);
+}
 
 static string[] GetAllowedOrigins(IConfiguration configuration)
 {
