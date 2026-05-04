@@ -1,5 +1,11 @@
 # Запуск: из корня репозитория — docker compose up --build
 # Локальные порты совпадают с launchSettings (HTTP), кроме контейнерного 8080.
+#
+# GssEncryptionMode=Disable: в Npgsql 10 по умолчанию Prefer — без Kerberos в образе dotnet
+# подгружается libgssapi_krb5 и падает сборка/рантайм; парольная аутентификация не нуждается в GSS.
+x-finpair-postgres-env: &finpair-postgres-env
+  ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root;GssEncryptionMode=Disable
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -17,6 +23,21 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+
+  # Одноразовое применение общих SQL-миграций до параллельного старта сервисов (иначе DbUp гонится за журнал).
+  db-migrate:
+    build:
+      context: ./finpair-backend
+      dockerfile: Dockerfile
+      args:
+        PROJECT_FILE: tools/FinPair.DbMigrate/FinPair.DbMigrate.csproj
+        ENTRY_DLL: FinPair.DbMigrate.dll
+    environment:
+      <<: *finpair-postgres-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   api-gateway:
     build:
@@ -54,13 +75,15 @@ services:
     ports:
       - "5222:8080"
     environment:
+      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
       Auth__SigningKey: finpair-local-development-signing-key-please-change
       Auth__RefreshCookieSecure: "false"
     depends_on:
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   analytics-service:
@@ -73,12 +96,14 @@ services:
     ports:
       - "5053:8080"
     environment:
+      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
       Auth__SigningKey: finpair-local-development-signing-key-please-change
     depends_on:
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   couple-service:
@@ -91,12 +116,14 @@ services:
     ports:
       - "5116:8080"
     environment:
+      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
       Auth__SigningKey: finpair-local-development-signing-key-please-change
     depends_on:
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   finance-service:
@@ -109,12 +136,14 @@ services:
     ports:
       - "5071:8080"
     environment:
+      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
       Auth__SigningKey: finpair-local-development-signing-key-please-change
     depends_on:
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   goal-service:
@@ -127,12 +156,14 @@ services:
     ports:
       - "5232:8080"
     environment:
+      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
       Auth__SigningKey: finpair-local-development-signing-key-please-change
     depends_on:
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   # На части сборок Windows порт 5000 занят системой — при ошибке bind смените, например, на "5002:8080".
@@ -146,12 +177,14 @@ services:
     ports:
       - "5000:8080"
     environment:
+      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root
       Auth__SigningKey: finpair-local-development-signing-key-please-change
     depends_on:
       postgres:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:

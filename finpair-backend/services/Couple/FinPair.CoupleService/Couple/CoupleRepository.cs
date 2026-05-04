@@ -5,13 +5,13 @@ using Npgsql;
 
 namespace FinPair.CoupleService.Couple;
 
-public sealed class CoupleRepository(NpgsqlDataSource dataSource)
+public sealed class CoupleRepository(NpgsqlDataSource dataSource, PostgresConnectionString postgres)
 {
     private const string DefaultNotifications = """{"transactions":true,"goals":true,"reports":true}""";
     private const string InviteChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default) =>
-        FinPairSchema.EnsureCoreSchemaAsync(dataSource, cancellationToken);
+        FinPairSchema.EnsureCoreSchemaAsync(postgres, cancellationToken);
 
     public async Task<CoupleMutationResult> CreateForUserAsync(Guid userId, CancellationToken cancellationToken)
     {
