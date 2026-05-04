@@ -1,5 +1,7 @@
 using FinPair.Common;
+using FinPair.CoupleService;
 using FinPair.CoupleService.Couple;
+using FinPair.CoupleService.Stores;
 using FinPair.Infrastructure;
 using FinPair.Infrastructure.Auth;
 using Npgsql;
@@ -20,6 +22,7 @@ builder.Services.AddFinPairSwagger("FinPair.CoupleService");
 builder.Services.AddFinPairPersistence(builder.Configuration);
 builder.Services.AddFinPairAccessTokenAuth(builder.Configuration);
 builder.Services.AddSingleton<CoupleRepository>();
+builder.Services.AddSingleton<HouseholdStore>();
 
 var app = builder.Build();
 
@@ -43,12 +46,28 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(CorsPolicyName);
 app.UseFinPairBearerAuth();
 
 app.MapGet("/", () => Results.Ok(new { service = "FinPair.CoupleService", product = "FinPair" }))
     .WithName("Root");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
     .WithName("Health");
+app.MapHouseholdEndpoints();
 app.MapCoupleEndpoints();
 
 await app.RunAsync();
+
+static string[] GetAllowedOrigins(IConfiguration configuration)
+{
+    var configuredOrigins = configuration.GetSection("Cors:AllowedOrigins")
+        .GetChildren()
+        .Select(origin => origin.Value)
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Cast<string>()
+        .ToArray();
+
+    return configuredOrigins.Length > 0
+        ? configuredOrigins
+        : ["http://localhost:5173", "http://localhost:3000", "http://localhost:4200"];
+}
