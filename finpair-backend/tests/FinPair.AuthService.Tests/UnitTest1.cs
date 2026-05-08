@@ -2,6 +2,7 @@ namespace FinPair.AuthService.Tests;
 
 using FinPair.AuthService.Auth;
 using Microsoft.Extensions.Options;
+using Moq;
 
 public class AuthCryptoTests
 {
@@ -54,11 +55,14 @@ public class AuthCryptoTests
 
     private static JwtTokenService CreateTokenService()
     {
-        return new JwtTokenService(Options.Create(new AuthOptions
+        var options = new Mock<IOptions<AuthOptions>>();
+        options.SetupGet(item => item.Value).Returns(new AuthOptions
         {
             Issuer = "FinPair.AuthService.Tests",
             Audience = "FinPair.Api.Tests",
             SigningKey = "finpair-auth-service-tests-signing-key"
-        }));
+        });
+
+        return new JwtTokenService(options.Object);
     }
 }
