@@ -1,8 +1,21 @@
 # Запуск: из корня репозитория — docker compose up --build
-# PostgreSQL и миграции — на сервере, вне compose. Строку подключения задайте на хосте
-# (переменная ConnectionStrings__Postgres или appsettings / secrets деплоя).
 
 services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finpair}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-finpair}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api-gateway:
     build:
       context: ./finpair-backend
@@ -41,7 +54,7 @@ services:
       - "5222:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
       Auth__Issuer: ${Auth__Issuer:-FinPair.AuthService}
       Auth__Audience: ${Auth__Audience:-FinPair.Api}
@@ -51,6 +64,9 @@ services:
       Auth__RefreshCookiePath: ${Auth__RefreshCookiePath:-/api/v1/auth}
       Auth__RefreshCookieSameSite: ${Auth__RefreshCookieSameSite:-Lax}
       Auth__RefreshCookieSecure: ${Auth__RefreshCookieSecure:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   analytics-service:
@@ -64,8 +80,11 @@ services:
       - "5053:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   couple-service:
@@ -79,8 +98,11 @@ services:
       - "5116:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   finance-service:
@@ -94,8 +116,11 @@ services:
       - "5071:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   goal-service:
@@ -109,8 +134,11 @@ services:
       - "5232:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   # На части сборок Windows порт 5000 занят системой — при ошибке bind смените, например, на "5002:8080".
@@ -125,11 +153,12 @@ services:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
-networks:
-  default:
-    name: dokploy-network
-    external: true
+volumes:
+  postgres_data:
