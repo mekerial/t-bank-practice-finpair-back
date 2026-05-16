@@ -1,29 +1,12 @@
 # Запуск: из корня репозитория — docker compose up --build
-# Локальные порты совпадают с launchSettings (HTTP), кроме контейнерного 8080.
+# PostgreSQL поднимается отдельно (локально или вне compose). Контейнеры подключаются к хосту.
 #
 # GssEncryptionMode=Disable: в Npgsql 10 по умолчанию Prefer — без Kerberos в образе dotnet
 # подгружается libgssapi_krb5 и падает сборка/рантайм; парольная аутентификация не нуждается в GSS.
 x-finpair-postgres-env: &finpair-postgres-env
-  ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=finpair;Username=postgres;Password=root;GssEncryptionMode=Disable
+  ConnectionStrings__Postgres: ${ConnectionStrings__Postgres:-Host=host.docker.internal;Port=5432;Database=finpair;Username=postgres;Password=root;GssEncryptionMode=Disable}
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: finpair
-    ports:
-      - "5432:5432"
-    volumes:
-      - finpair_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d finpair"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   # Одноразовое применение общих SQL-миграций до параллельного старта сервисов (иначе DbUp гонится за журнал).
   db-migrate:
     build:
@@ -34,9 +17,8 @@ services:
         ENTRY_DLL: FinPair.DbMigrate.dll
     environment:
       <<: *finpair-postgres-env
-    depends_on:
-      postgres:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: "no"
 
   api-gateway:
@@ -79,9 +61,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
       Auth__RefreshCookieSecure: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      postgres:
-        condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -99,9 +81,9 @@ services:
       <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      postgres:
-        condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -119,9 +101,9 @@ services:
       <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      postgres:
-        condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -139,9 +121,9 @@ services:
       <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      postgres:
-        condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -159,9 +141,9 @@ services:
       <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      postgres:
-        condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -180,12 +162,9 @@ services:
       <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
-      postgres:
-        condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
-
-volumes:
-  finpair_pgdata:
