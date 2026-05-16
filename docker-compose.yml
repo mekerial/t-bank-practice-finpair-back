@@ -20,6 +20,7 @@ services:
       Services__Goals__BaseUrl: http://goal-service:8080
       Services__Analytics__BaseUrl: http://analytics-service:8080
       Services__Support__BaseUrl: http://support-service:8080
+      Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0}
     depends_on:
       - auth-service
       - couple-service
@@ -40,8 +41,16 @@ services:
       - "5222:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__SigningKey: finpair-local-development-signing-key-please-change
-      Auth__RefreshCookieSecure: "false"
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Auth__SigningKey: ${Auth__SigningKey}
+      Auth__Issuer: ${Auth__Issuer:-FinPair.AuthService}
+      Auth__Audience: ${Auth__Audience:-FinPair.Api}
+      Auth__AccessTokenLifetimeMinutes: ${Auth__AccessTokenLifetimeMinutes:-15}
+      Auth__RefreshTokenLifetimeDays: ${Auth__RefreshTokenLifetimeDays:-30}
+      Auth__RefreshCookieName: ${Auth__RefreshCookieName:-finpair.refresh_token}
+      Auth__RefreshCookiePath: ${Auth__RefreshCookiePath:-/api/v1/auth}
+      Auth__RefreshCookieSameSite: ${Auth__RefreshCookieSameSite:-Lax}
+      Auth__RefreshCookieSecure: ${Auth__RefreshCookieSecure:-false}
     restart: unless-stopped
 
   analytics-service:
@@ -55,7 +64,8 @@ services:
       - "5053:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__SigningKey: finpair-local-development-signing-key-please-change
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Auth__SigningKey: ${Auth__SigningKey}
     restart: unless-stopped
 
   couple-service:
@@ -69,7 +79,8 @@ services:
       - "5116:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__SigningKey: finpair-local-development-signing-key-please-change
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Auth__SigningKey: ${Auth__SigningKey}
     restart: unless-stopped
 
   finance-service:
@@ -83,7 +94,8 @@ services:
       - "5071:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__SigningKey: finpair-local-development-signing-key-please-change
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Auth__SigningKey: ${Auth__SigningKey}
     restart: unless-stopped
 
   goal-service:
@@ -97,7 +109,8 @@ services:
       - "5232:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__SigningKey: finpair-local-development-signing-key-please-change
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Auth__SigningKey: ${Auth__SigningKey}
     restart: unless-stopped
 
   # На части сборок Windows порт 5000 занят системой — при ошибке bind смените, например, на "5002:8080".
@@ -112,5 +125,6 @@ services:
       - "5000:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      Auth__SigningKey: finpair-local-development-signing-key-please-change
+      ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
+      Auth__SigningKey: ${Auth__SigningKey}
     restart: unless-stopped
