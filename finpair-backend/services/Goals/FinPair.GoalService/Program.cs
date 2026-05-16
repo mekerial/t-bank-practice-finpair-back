@@ -13,11 +13,10 @@ builder.Services.AddSingleton<GoalRepository>();
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var repository = scope.ServiceProvider.GetRequiredService<GoalRepository>();
-    await repository.EnsureSchemaAsync();
-}
+app.UseFinPairOperationalLogging("FinPair.GoalService");
+await app.EnsureFinPairDatabaseReadyAsync<GoalRepository>(
+    "FinPair.GoalService",
+    (repository, cancellationToken) => repository.EnsureSchemaAsync(cancellationToken));
 
 if (app.Environment.IsDevelopment())
 {

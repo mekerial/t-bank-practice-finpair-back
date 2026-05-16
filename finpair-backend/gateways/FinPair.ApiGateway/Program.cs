@@ -19,6 +19,8 @@ builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(30
 
 var app = builder.Build();
 
+app.UseFinPairOperationalLogging("FinPair.ApiGateway");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseFinPairSwaggerUi("FinPair.ApiGateway v1");

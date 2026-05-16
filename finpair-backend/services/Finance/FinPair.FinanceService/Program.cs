@@ -26,11 +26,10 @@ builder.Services.AddSingleton<TransactionStore>();
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var repository = scope.ServiceProvider.GetRequiredService<FinanceRepository>();
-    await repository.EnsureSchemaAsync();
-}
+app.UseFinPairOperationalLogging("FinPair.FinanceService");
+await app.EnsureFinPairDatabaseReadyAsync<FinanceRepository>(
+    "FinPair.FinanceService",
+    (repository, cancellationToken) => repository.EnsureSchemaAsync(cancellationToken));
 
 if (app.Environment.IsDevelopment())
 {
