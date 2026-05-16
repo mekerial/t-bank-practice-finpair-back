@@ -15,7 +15,10 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddFinPairSwagger("FinPair.ApiGateway");
-builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(30) });
+builder.Services.AddSingleton(new HttpClient(new HttpClientHandler { UseCookies = false })
+{
+    Timeout = TimeSpan.FromSeconds(30)
+});
 
 var app = builder.Build();
 
