@@ -13,11 +13,10 @@ builder.Services.AddSingleton<AnalyticsRepository>();
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var repository = scope.ServiceProvider.GetRequiredService<AnalyticsRepository>();
-    await repository.EnsureSchemaAsync();
-}
+app.UseFinPairOperationalLogging("FinPair.AnalyticsService");
+await app.EnsureFinPairDatabaseReadyAsync<AnalyticsRepository>(
+    "FinPair.AnalyticsService",
+    (repository, cancellationToken) => repository.EnsureSchemaAsync(cancellationToken));
 
 if (app.Environment.IsDevelopment())
 {

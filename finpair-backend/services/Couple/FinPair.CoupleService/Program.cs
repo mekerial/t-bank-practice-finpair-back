@@ -26,11 +26,10 @@ builder.Services.AddSingleton<HouseholdStore>();
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var repository = scope.ServiceProvider.GetRequiredService<CoupleRepository>();
-    await repository.EnsureSchemaAsync();
-}
+app.UseFinPairOperationalLogging("FinPair.CoupleService");
+await app.EnsureFinPairDatabaseReadyAsync<CoupleRepository>(
+    "FinPair.CoupleService",
+    (repository, cancellationToken) => repository.EnsureSchemaAsync(cancellationToken));
 
 if (app.Environment.IsDevelopment())
 {

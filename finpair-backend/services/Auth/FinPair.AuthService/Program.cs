@@ -25,11 +25,10 @@ builder.Services.AddSingleton<JwtTokenService>();
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var repository = scope.ServiceProvider.GetRequiredService<AuthRepository>();
-    await repository.EnsureSchemaAsync();
-}
+app.UseFinPairOperationalLogging("FinPair.AuthService");
+await app.EnsureFinPairDatabaseReadyAsync<AuthRepository>(
+    "FinPair.AuthService",
+    (repository, cancellationToken) => repository.EnsureSchemaAsync(cancellationToken));
 
 if (app.Environment.IsDevelopment())
 {

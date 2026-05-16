@@ -13,11 +13,10 @@ builder.Services.AddSingleton<SupportRepository>();
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var repository = scope.ServiceProvider.GetRequiredService<SupportRepository>();
-    await repository.EnsureSchemaAsync();
-}
+app.UseFinPairOperationalLogging("FinPair.SupportService");
+await app.EnsureFinPairDatabaseReadyAsync<SupportRepository>(
+    "FinPair.SupportService",
+    (repository, cancellationToken) => repository.EnsureSchemaAsync(cancellationToken));
 
 if (app.Environment.IsDevelopment())
 {
