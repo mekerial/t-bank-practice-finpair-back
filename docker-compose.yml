@@ -1,26 +1,8 @@
 # Запуск: из корня репозитория — docker compose up --build
-# PostgreSQL поднимается отдельно (локально или вне compose). Контейнеры подключаются к хосту.
-#
-# GssEncryptionMode=Disable: в Npgsql 10 по умолчанию Prefer — без Kerberos в образе dotnet
-# подгружается libgssapi_krb5 и падает сборка/рантайм; парольная аутентификация не нуждается в GSS.
-x-finpair-postgres-env: &finpair-postgres-env
-  ConnectionStrings__Postgres: ${ConnectionStrings__Postgres:-Host=host.docker.internal;Port=5432;Database=finpair;Username=postgres;Password=root;GssEncryptionMode=Disable}
+# PostgreSQL и миграции — на сервере, вне compose. Строку подключения задайте на хосте
+# (переменная ConnectionStrings__Postgres или appsettings / secrets деплоя).
 
 services:
-  # Одноразовое применение общих SQL-миграций до параллельного старта сервисов (иначе DbUp гонится за журнал).
-  db-migrate:
-    build:
-      context: ./finpair-backend
-      dockerfile: Dockerfile
-      args:
-        PROJECT_FILE: tools/FinPair.DbMigrate/FinPair.DbMigrate.csproj
-        ENTRY_DLL: FinPair.DbMigrate.dll
-    environment:
-      <<: *finpair-postgres-env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: "no"
-
   api-gateway:
     build:
       context: ./finpair-backend
@@ -57,15 +39,9 @@ services:
     ports:
       - "5222:8080"
     environment:
-      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
       Auth__RefreshCookieSecure: "false"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
 
   analytics-service:
@@ -78,14 +54,8 @@ services:
     ports:
       - "5053:8080"
     environment:
-      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
 
   couple-service:
@@ -98,14 +68,8 @@ services:
     ports:
       - "5116:8080"
     environment:
-      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
 
   finance-service:
@@ -118,14 +82,8 @@ services:
     ports:
       - "5071:8080"
     environment:
-      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
 
   goal-service:
@@ -138,14 +96,8 @@ services:
     ports:
       - "5232:8080"
     environment:
-      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
 
   # На части сборок Windows порт 5000 занят системой — при ошибке bind смените, например, на "5002:8080".
@@ -159,12 +111,6 @@ services:
     ports:
       - "5000:8080"
     environment:
-      <<: *finpair-postgres-env
       ASPNETCORE_ENVIRONMENT: Development
       Auth__SigningKey: finpair-local-development-signing-key-please-change
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      db-migrate:
-        condition: service_completed_successfully
     restart: unless-stopped

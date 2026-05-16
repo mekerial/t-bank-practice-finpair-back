@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Сборка одного веб-проекта: задайте PROJECT_FILE и ENTRY_DLL (имя основной DLL после publish).
 ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0
 ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0
