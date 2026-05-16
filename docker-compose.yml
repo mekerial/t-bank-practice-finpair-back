@@ -128,3 +128,8 @@ services:
       ConnectionStrings__Postgres: ${ConnectionStrings__Postgres}
       Auth__SigningKey: ${Auth__SigningKey}
     restart: unless-stopped
+
+networks:
+  default:
+    name: dokploy-network
+    external: true
