@@ -35,6 +35,9 @@ services:
       Services__Analytics__BaseUrl: http://analytics-service:8080
       Services__Support__BaseUrl: http://support-service:8080
       Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0}
+    networks:
+      - default
+      - dokploy-network
     depends_on:
       - auth-service
       - couple-service
@@ -160,6 +163,10 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
 
 volumes:
   postgres17_data:
