@@ -25,6 +25,7 @@ public sealed class GoalRepositoryIntegrationTests : IClassFixture<GoalPostgresF
 
         var userId = await SeedHouseholdWithUserAsync(dataSource);
 
+        var deadline = DateOnly.FromDateTime(DateTime.UtcNow).AddMonths(6);
         var created = await repository.CreateGoalAsync(
             userId,
             new CreateGoalRequest(
@@ -32,12 +33,13 @@ public sealed class GoalRepositoryIntegrationTests : IClassFixture<GoalPostgresF
                 200000m,
                 50000m,
                 15000m,
-                new DateOnly(2026, 12, 1),
+                deadline,
                 true),
             CancellationToken.None);
 
         Assert.Equal(GoalMutationStatus.Success, created.Status);
         Assert.Equal(25m, created.Value!.ProgressPercent);
+        Assert.Equal(25000m, created.Value.MonthlyContribution);
 
         var contribution = await repository.AddContributionAsync(
             userId,
@@ -53,6 +55,46 @@ public sealed class GoalRepositoryIntegrationTests : IClassFixture<GoalPostgresF
         var goals = await repository.GetGoalsAsync(userId, CancellationToken.None);
         Assert.NotNull(goals);
         Assert.Single(goals);
+    }
+
+    [Fact]
+    public async Task GoalRepository_RecalculatesMonthlyContributionWhenGoalDatesOrAmountsChange()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(_fixture.ConnectionString);
+        var repository = new GoalRepository(dataSource, new PostgresConnectionString(_fixture.ConnectionString));
+        await repository.EnsureSchemaAsync(CancellationToken.None);
+
+        var userId = await SeedHouseholdWithUserAsync(dataSource);
+        var currentMonth = DateOnly.FromDateTime(DateTime.UtcNow);
+        var deadline = currentMonth.AddMonths(4);
+
+        var created = await repository.CreateGoalAsync(
+            userId,
+            new CreateGoalRequest(
+                "Laptop",
+                100000m,
+                40000m,
+                null,
+                deadline,
+                true),
+            CancellationToken.None);
+
+        Assert.Equal(GoalMutationStatus.Success, created.Status);
+        Assert.Equal(15000m, created.Value!.MonthlyContribution);
+
+        var updated = await repository.UpdateGoalAsync(
+            userId,
+            created.Value.Id,
+            new UpdateGoalRequest(null, null, 70000m, null, null, null),
+            CancellationToken.None);
+
+        Assert.Equal(GoalMutationStatus.Success, updated.Status);
+        Assert.Equal(7500m, updated.Value!.MonthlyContribution);
     }
 
     private static async Task<Guid> SeedHouseholdWithUserAsync(NpgsqlDataSource dataSource)

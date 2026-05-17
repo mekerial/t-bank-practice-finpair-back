@@ -629,19 +629,26 @@ public sealed class FinanceRepository(NpgsqlDataSource dataSource, PostgresConne
             """;
         partnersCommand.Parameters.AddWithValue("household_id", household.Id);
 
-        var partners = new List<PartnerSummary>();
+        var partnerTotals = new List<PartnerDashboardTotals>();
         await using (var reader = await partnersCommand.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
             {
-                var income = reader.GetDecimal(1);
-                partners.Add(new PartnerSummary(
+                partnerTotals.Add(new PartnerDashboardTotals(
                     reader.GetGuid(0),
-                    income,
-                    reader.GetDecimal(2),
-                    totalIncome <= 0 ? 0 : Math.Round(income / totalIncome * 100, 2)));
+                    reader.GetDecimal(1),
+                    reader.GetDecimal(2)));
             }
         }
+
+        var partnerShares = CalculatePartnerShares(partnerTotals, household.SplitType);
+        var partners = partnerTotals
+            .Select((partner, index) => new PartnerSummary(
+                partner.UserId,
+                partner.Income,
+                partner.Expense,
+                partnerShares[index]))
+            .ToArray();
 
         return new DashboardResult(
             household.Currency,
@@ -651,6 +658,59 @@ public sealed class FinanceRepository(NpgsqlDataSource dataSource, PostgresConne
             totalIncome <= 0 ? 0 : Math.Round(totalExpense / totalIncome * 100, 2),
             household.SplitType,
             partners);
+    }
+
+    private static decimal[] CalculatePartnerShares(IReadOnlyList<PartnerDashboardTotals> partners, string splitType)
+    {
+        if (partners.Count == 0)
+        {
+            return [];
+        }
+
+        if (partners.Count == 1)
+        {
+            return [100m];
+        }
+
+        var normalizedSplitType = splitType.Trim().ToLowerInvariant();
+        var weights = normalizedSplitType switch
+        {
+            "income" or "income_ratio" => partners.Select(partner => Math.Max(0, partner.Income)).ToArray(),
+            "custom" => partners.Select(partner => Math.Max(0, partner.Expense)).ToArray(),
+            _ => partners.Select(_ => 1m).ToArray()
+        };
+
+        if (weights.Sum() <= 0)
+        {
+            weights = partners.Select(_ => 1m).ToArray();
+        }
+
+        return ToRoundedPercentages(weights);
+    }
+
+    private static decimal[] ToRoundedPercentages(IReadOnlyList<decimal> weights)
+    {
+        var total = weights.Sum();
+        if (total <= 0)
+        {
+            return weights.Select(_ => 0m).ToArray();
+        }
+
+        var percentages = new decimal[weights.Count];
+        var assigned = 0m;
+        for (var i = 0; i < weights.Count; i++)
+        {
+            if (i == weights.Count - 1)
+            {
+                percentages[i] = Math.Round(100m - assigned, 2);
+                continue;
+            }
+
+            percentages[i] = Math.Round(weights[i] / total * 100m, 2);
+            assigned += percentages[i];
+        }
+
+        return percentages;
     }
 
     private async Task<HouseholdContext?> GetHouseholdContextAsync(Guid userId, CancellationToken cancellationToken)
@@ -833,4 +893,6 @@ public sealed class FinanceRepository(NpgsqlDataSource dataSource, PostgresConne
         return JsonSerializer.Deserialize<Dictionary<string, bool>>(json) ??
                new Dictionary<string, bool>();
     }
+
+    private sealed record PartnerDashboardTotals(Guid UserId, decimal Income, decimal Expense);
 }

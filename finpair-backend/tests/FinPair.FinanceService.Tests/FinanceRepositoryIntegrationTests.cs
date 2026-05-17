@@ -93,6 +93,33 @@ public sealed class FinanceRepositoryIntegrationTests : IClassFixture<FinancePos
         Assert.Equal(profile.Income, updated.Value.Income);
     }
 
+    [Fact]
+    public async Task FinanceRepository_DashboardUsesConfiguredSplitTypeForShares()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(_fixture.ConnectionString);
+        var repository = new FinanceRepository(dataSource, new PostgresConnectionString(_fixture.ConnectionString));
+        await repository.EnsureSchemaAsync(CancellationToken.None);
+
+        var (householdId, userAId, _) = await SeedHouseholdWithTwoUsersAsync(dataSource, "income");
+
+        var incomeDashboard = await repository.GetDashboardAsync(userAId, CancellationToken.None);
+        Assert.NotNull(incomeDashboard);
+        Assert.Equal(66.67m, incomeDashboard.PartnerSummary[0].SharePercent);
+        Assert.Equal(33.33m, incomeDashboard.PartnerSummary[1].SharePercent);
+
+        await UpdateSplitTypeAsync(dataSource, householdId, "equal");
+
+        var equalDashboard = await repository.GetDashboardAsync(userAId, CancellationToken.None);
+        Assert.NotNull(equalDashboard);
+        Assert.Equal(50m, equalDashboard.PartnerSummary[0].SharePercent);
+        Assert.Equal(50m, equalDashboard.PartnerSummary[1].SharePercent);
+    }
+
     private static async Task<(Guid HouseholdId, Guid UserId)> SeedHouseholdWithUserAsync(NpgsqlDataSource dataSource)
     {
         var householdId = Guid.NewGuid();
@@ -112,6 +139,49 @@ public sealed class FinanceRepositoryIntegrationTests : IClassFixture<FinancePos
         command.Parameters.AddWithValue("email", $"finance-{Guid.NewGuid():N}@example.com");
         await command.ExecuteNonQueryAsync(CancellationToken.None);
         return (householdId, userId);
+    }
+
+    private static async Task<(Guid HouseholdId, Guid UserAId, Guid UserBId)> SeedHouseholdWithTwoUsersAsync(
+        NpgsqlDataSource dataSource,
+        string splitType)
+    {
+        var householdId = Guid.NewGuid();
+        var userAId = Guid.NewGuid();
+        var userBId = Guid.NewGuid();
+        await using var connection = await dataSource.OpenConnectionAsync(CancellationToken.None);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO households (id, invite_code, currency, split_type, notifications, created_at, updated_at)
+            VALUES (@household_id, @invite_code, 'RUB', @split_type, '{}'::jsonb, now(), now());
+
+            INSERT INTO users (id, email, password_hash, name, household_id, income, created_at, updated_at)
+            VALUES
+                (@user_a_id, @user_a_email, 'hash', 'User A', @household_id, 200000, now(), now()),
+                (@user_b_id, @user_b_email, 'hash', 'User B', @household_id, 100000, now(), now());
+            """;
+        command.Parameters.AddWithValue("household_id", householdId);
+        command.Parameters.AddWithValue("invite_code", $"INV-{Guid.NewGuid():N}");
+        command.Parameters.AddWithValue("split_type", splitType);
+        command.Parameters.AddWithValue("user_a_id", userAId);
+        command.Parameters.AddWithValue("user_a_email", $"finance-a-{Guid.NewGuid():N}@example.com");
+        command.Parameters.AddWithValue("user_b_id", userBId);
+        command.Parameters.AddWithValue("user_b_email", $"finance-b-{Guid.NewGuid():N}@example.com");
+        await command.ExecuteNonQueryAsync(CancellationToken.None);
+        return (householdId, userAId, userBId);
+    }
+
+    private static async Task UpdateSplitTypeAsync(NpgsqlDataSource dataSource, Guid householdId, string splitType)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(CancellationToken.None);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE households
+            SET split_type = @split_type
+            WHERE id = @household_id;
+            """;
+        command.Parameters.AddWithValue("household_id", householdId);
+        command.Parameters.AddWithValue("split_type", splitType);
+        await command.ExecuteNonQueryAsync(CancellationToken.None);
     }
 
     private static async Task<Guid> ReadHouseholdIdForTransactionAsync(NpgsqlDataSource dataSource, Guid transactionId)

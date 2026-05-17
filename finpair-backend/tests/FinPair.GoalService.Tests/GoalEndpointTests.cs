@@ -97,6 +97,34 @@ public class GoalEndpointTests
         Assert.Null(dto.ForecastDate);
     }
 
+    [Fact]
+    public void CalculateMonthlyContribution_UsesDeadlineAndCurrentAmount()
+    {
+        var today = new DateOnly(2026, 5, 17);
+
+        var monthly = InvokeCalculateMonthlyContribution(
+            120000m,
+            30000m,
+            new DateOnly(2026, 8, 17),
+            today);
+
+        Assert.Equal(30000m, monthly);
+    }
+
+    [Fact]
+    public void CalculateMonthlyContribution_RoundsUpToCents()
+    {
+        var today = new DateOnly(2026, 5, 17);
+
+        var monthly = InvokeCalculateMonthlyContribution(
+            100000m,
+            0m,
+            new DateOnly(2026, 8, 17),
+            today);
+
+        Assert.Equal(33333.34m, monthly);
+    }
+
     private static IReadOnlyDictionary<string, string[]> InvokeEndpointValidation(string methodName, object request)
     {
         var method = typeof(GoalEndpoints).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)
@@ -111,6 +139,19 @@ public class GoalEndpointTests
             ?? throw new MissingMethodException(nameof(GoalRepository), "ToDto");
 
         return (GoalDto)method.Invoke(null, [goal])!;
+    }
+
+    private static decimal InvokeCalculateMonthlyContribution(
+        decimal targetAmount,
+        decimal currentAmount,
+        DateOnly? deadline,
+        DateOnly today)
+    {
+        var method = typeof(GoalRepository)
+            .GetMethod("CalculateMonthlyContribution", BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingMethodException(nameof(GoalRepository), "CalculateMonthlyContribution");
+
+        return (decimal)method.Invoke(null, [targetAmount, currentAmount, deadline, today])!;
     }
 
     private static IReadOnlySet<string?> GetRouteTexts(WebApplication app) =>

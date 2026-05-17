@@ -86,7 +86,13 @@ public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnecti
         command.Parameters.AddWithValue("title", request.Title!.Trim());
         command.Parameters.AddWithValue("target_amount", request.TargetAmount!.Value);
         command.Parameters.AddWithValue("current_amount", request.CurrentAmount ?? 0);
-        command.Parameters.AddWithValue("monthly_contribution", request.MonthlyContribution ?? 0);
+        command.Parameters.AddWithValue(
+            "monthly_contribution",
+            CalculateMonthlyContribution(
+                request.TargetAmount!.Value,
+                request.CurrentAmount ?? 0,
+                request.Deadline,
+                DateOnly.FromDateTime(DateTime.UtcNow)));
         command.Parameters.Add("deadline", NpgsqlDbType.Date).Value = request.Deadline is null ? DBNull.Value : request.Deadline.Value;
         command.Parameters.AddWithValue("is_shared", request.IsShared ?? true);
 
@@ -108,8 +114,14 @@ public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnecti
             return new GoalMutationResult<GoalDto>(GoalMutationStatus.HouseholdNotFound, null);
         }
 
-        var sets = new List<string>();
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var currentGoal = await GetGoalRecordAsync(connection, householdId.Value, goalId, cancellationToken);
+        if (currentGoal is null)
+        {
+            return new GoalMutationResult<GoalDto>(GoalMutationStatus.GoalNotFound, null);
+        }
+
+        var sets = new List<string>();
         await using var command = connection.CreateCommand();
 
         if (!string.IsNullOrWhiteSpace(request.Title))
@@ -134,6 +146,19 @@ public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnecti
         {
             sets.Add("monthly_contribution = @monthly_contribution");
             command.Parameters.AddWithValue("monthly_contribution", request.MonthlyContribution.Value);
+        }
+        else if (request.TargetAmount is not null ||
+                 request.CurrentAmount is not null ||
+                 request.Deadline is not null)
+        {
+            sets.Add("monthly_contribution = @monthly_contribution");
+            command.Parameters.AddWithValue(
+                "monthly_contribution",
+                CalculateMonthlyContribution(
+                    request.TargetAmount ?? currentGoal.TargetAmount,
+                    request.CurrentAmount ?? currentGoal.CurrentAmount,
+                    request.Deadline ?? currentGoal.Deadline,
+                    DateOnly.FromDateTime(DateTime.UtcNow)));
         }
 
         if (request.Deadline is not null)
@@ -293,6 +318,15 @@ public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnecti
         }
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        return await GetGoalRecordAsync(connection, householdId.Value, goalId, cancellationToken);
+    }
+
+    private static async Task<GoalRecord?> GetGoalRecordAsync(
+        NpgsqlConnection connection,
+        Guid householdId,
+        Guid goalId,
+        CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, household_id, title, target_amount, current_amount, monthly_contribution, deadline, is_shared
@@ -302,7 +336,7 @@ public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnecti
             LIMIT 1;
             """;
         command.Parameters.AddWithValue("goal_id", goalId);
-        command.Parameters.AddWithValue("household_id", householdId.Value);
+        command.Parameters.AddWithValue("household_id", householdId);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         return await reader.ReadAsync(cancellationToken) ? ReadGoal(reader) : null;
@@ -355,5 +389,42 @@ public sealed class GoalRepository(NpgsqlDataSource dataSource, PostgresConnecti
 
         var months = (int)Math.Ceiling(remainingAmount / monthlyContribution);
         return DateOnly.FromDateTime(DateTime.UtcNow).AddMonths(months);
+    }
+
+    private static decimal CalculateMonthlyContribution(
+        decimal targetAmount,
+        decimal currentAmount,
+        DateOnly? deadline,
+        DateOnly today)
+    {
+        var remainingAmount = Math.Max(0, targetAmount - currentAmount);
+        if (remainingAmount <= 0)
+        {
+            return 0;
+        }
+
+        if (deadline is null)
+        {
+            return 0;
+        }
+
+        var months = CountMonthlyDeposits(today, deadline.Value);
+        return Math.Ceiling(remainingAmount / months * 100m) / 100m;
+    }
+
+    private static int CountMonthlyDeposits(DateOnly today, DateOnly deadline)
+    {
+        if (deadline <= today)
+        {
+            return 1;
+        }
+
+        var months = (deadline.Year - today.Year) * 12 + deadline.Month - today.Month;
+        if (deadline.Day > today.Day)
+        {
+            months++;
+        }
+
+        return Math.Max(1, months);
     }
 }
