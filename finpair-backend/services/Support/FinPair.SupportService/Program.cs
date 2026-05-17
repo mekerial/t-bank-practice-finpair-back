@@ -10,6 +10,12 @@ builder.Services.AddFinPairSwagger("FinPair.SupportService");
 builder.Services.AddFinPairPersistence(builder.Configuration);
 builder.Services.AddFinPairAccessTokenAuth(builder.Configuration);
 builder.Services.AddSingleton<SupportRepository>();
+builder.Services.Configure<SupportAiOptions>(builder.Configuration.GetSection("SupportAi"));
+builder.Services.AddHttpClient<ISupportChatClient, OllamaChatClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SupportAiOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 5, 180));
+});
 
 var app = builder.Build();
 
