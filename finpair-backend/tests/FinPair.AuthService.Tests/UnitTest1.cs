@@ -1,6 +1,7 @@
 namespace FinPair.AuthService.Tests;
 
 using FinPair.AuthService.Auth;
+using System.Reflection;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -51,6 +52,26 @@ public class AuthCryptoTests
         var tamperedToken = token[..^1] + (token[^1] == 'a' ? 'b' : 'a');
 
         Assert.False(tokenService.TryValidateAccessToken(tamperedToken, out _));
+    }
+
+    [Fact]
+    public void AuthEndpoints_UserSummary_IncludesName()
+    {
+        var user = new UserRecord(
+            Guid.NewGuid(),
+            "user@example.com",
+            "hash",
+            "Partner A",
+            null,
+            false);
+
+        var method = typeof(AuthEndpoints)
+            .GetMethod("ToUserSummary", BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new MissingMethodException(nameof(AuthEndpoints), "ToUserSummary");
+
+        var summary = (UserSummary)method.Invoke(null, [user])!;
+
+        Assert.Equal("Partner A", summary.Name);
     }
 
     private static JwtTokenService CreateTokenService()

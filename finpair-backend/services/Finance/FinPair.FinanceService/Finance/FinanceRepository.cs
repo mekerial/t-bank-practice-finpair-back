@@ -17,7 +17,7 @@ public sealed class FinanceRepository(NpgsqlDataSource dataSource, PostgresConne
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT id, email, income
+            SELECT id, email, name, income
             FROM users
             WHERE id = @user_id
             LIMIT 1;
@@ -26,31 +26,52 @@ public sealed class FinanceRepository(NpgsqlDataSource dataSource, PostgresConne
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         return await reader.ReadAsync(cancellationToken)
-            ? new UserProfileResult(reader.GetGuid(0), reader.GetString(1), reader.GetDecimal(2))
+            ? ReadUserProfile(reader)
             : null;
     }
 
-    public async Task<UserProfileResult?> UpdateUserProfileAsync(
+    public async Task<FinanceMutationResult<UserProfileResult>> UpdateUserProfileAsync(
         Guid userId,
-        decimal income,
+        decimal? income,
+        string? name,
         CancellationToken cancellationToken)
     {
+        var sets = new List<string>();
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = """
+
+        if (income is not null)
+        {
+            sets.Add("income = @income");
+            command.Parameters.AddWithValue("income", income.Value);
+        }
+
+        if (name is not null)
+        {
+            sets.Add("name = @name");
+            command.Parameters.AddWithValue("name", name.Trim());
+        }
+
+        if (sets.Count == 0)
+        {
+            return new FinanceMutationResult<UserProfileResult>(
+                FinanceMutationStatus.Success,
+                await GetUserProfileAsync(userId, cancellationToken));
+        }
+
+        sets.Add("updated_at = now()");
+        command.CommandText = $"""
             UPDATE users
-            SET income = @income,
-                updated_at = now()
+            SET {string.Join(", ", sets)}
             WHERE id = @user_id
-            RETURNING id, email, income;
+            RETURNING id, email, name, income;
             """;
         command.Parameters.AddWithValue("user_id", userId);
-        command.Parameters.AddWithValue("income", income);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         return await reader.ReadAsync(cancellationToken)
-            ? new UserProfileResult(reader.GetGuid(0), reader.GetString(1), reader.GetDecimal(2))
-            : null;
+            ? new FinanceMutationResult<UserProfileResult>(FinanceMutationStatus.Success, ReadUserProfile(reader))
+            : new FinanceMutationResult<UserProfileResult>(FinanceMutationStatus.UserNotFound, null);
     }
 
     public async Task<FinanceProfileResult?> GetFinanceProfileAsync(Guid userId, CancellationToken cancellationToken)
@@ -797,6 +818,13 @@ public sealed class FinanceRepository(NpgsqlDataSource dataSource, PostgresConne
     {
         return (description ?? title ?? string.Empty).Trim();
     }
+
+    private static UserProfileResult ReadUserProfile(NpgsqlDataReader reader) =>
+        new(
+            reader.GetGuid(0),
+            reader.GetString(1),
+            reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+            reader.GetDecimal(3));
 
     private static string NormalizeType(string type) => type.Trim().ToLowerInvariant();
 

@@ -105,10 +105,17 @@ public static class FinanceEndpoints
             return Error("VALIDATION_ERROR", "Invalid request.", StatusCodes.Status400BadRequest, validationErrors);
         }
 
-        var profile = await repository.UpdateUserProfileAsync(userId, request.Income.GetValueOrDefault(), cancellationToken);
-        return profile is null
-            ? Error("UNAUTHORIZED", "User was not found.", StatusCodes.Status401Unauthorized)
-            : Results.Json(ApiResponse<UserProfileResult>.Ok(profile));
+        var result = await repository.UpdateUserProfileAsync(
+            userId,
+            request.Income,
+            request.Name,
+            cancellationToken);
+
+        return result.Status switch
+        {
+            FinanceMutationStatus.Success => Results.Json(ApiResponse<UserProfileResult>.Ok(result.Value!)),
+            _ => Error("UNAUTHORIZED", "User was not found.", StatusCodes.Status401Unauthorized)
+        };
     }
 
     private static async Task<IResult> GetFinanceProfileAsync(
@@ -407,7 +414,15 @@ public static class FinanceEndpoints
     private static IReadOnlyDictionary<string, string[]> ValidateUserProfile(UpdateUserProfileRequest request)
     {
         var errors = new ValidationErrors();
-        DomainValidation.RequiredMoney(errors, "income", request.Income, allowZero: true);
+        DomainValidation.OptionalMoney(errors, "income", request.Income, allowZero: true);
+        DomainValidation.OptionalText(errors, "name", request.Name, maxLength: 100);
+
+        if (request.Income is null &&
+            request.Name is null)
+        {
+            errors.Add("request", "At least one profile field must be provided.");
+        }
+
         return errors.ToDictionary();
     }
 

@@ -1,8 +1,8 @@
 namespace FinPair.FinanceService.Finance;
 
-public sealed record UserProfileResult(Guid Id, string Email, decimal Income);
+public sealed record UserProfileResult(Guid Id, string Email, string Name, decimal Income);
 
-public sealed record UpdateUserProfileRequest(decimal? Income);
+public sealed record UpdateUserProfileRequest(decimal? Income, string? Name);
 
 public sealed record FinanceProfileResult(decimal Income, string Currency, IReadOnlyDictionary<string, bool> Notifications);
 

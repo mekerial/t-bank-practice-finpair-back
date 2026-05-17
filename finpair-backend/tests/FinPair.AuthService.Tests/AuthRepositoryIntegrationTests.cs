@@ -32,6 +32,7 @@ public sealed class AuthRepositoryIntegrationTests : IClassFixture<AuthPostgresF
 
         Assert.NotNull(user);
         Assert.Equal(email, user.Email);
+        Assert.Equal("User", user.Name);
 
         var duplicate = await repository.CreateUserAsync(
             email,

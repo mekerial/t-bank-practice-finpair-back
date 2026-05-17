@@ -66,6 +66,26 @@ public class FinanceEndpointTests
     }
 
     [Fact]
+    public void ValidateUserProfile_AcceptsNameOnlyPatch()
+    {
+        var request = new UpdateUserProfileRequest(null, "Partner A");
+
+        var errors = InvokeValidation("ValidateUserProfile", request);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateUserProfile_RejectsEmptyPatch()
+    {
+        var request = new UpdateUserProfileRequest(null, null);
+
+        var errors = InvokeValidation("ValidateUserProfile", request);
+
+        Assert.Contains("request", errors.Keys);
+    }
+
+    [Fact]
     public void ValidateUpdateTransaction_RejectsEmptyPatch()
     {
         var request = new UpdateTransactionRequest(null, null, null, null, null, null, null);

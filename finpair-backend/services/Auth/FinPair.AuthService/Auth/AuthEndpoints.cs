@@ -275,7 +275,7 @@ public static class AuthEndpoints
     }
 
     private static UserSummary ToUserSummary(UserRecord user) =>
-        new(user.Id, user.Email, user.EmailVerified, user.HouseholdId is not null);
+        new(user.Id, user.Email, user.Name ?? string.Empty, user.EmailVerified, user.HouseholdId is not null);
 
     private static IReadOnlyDictionary<string, string[]> ValidateEmailAndPassword(
         string? email,

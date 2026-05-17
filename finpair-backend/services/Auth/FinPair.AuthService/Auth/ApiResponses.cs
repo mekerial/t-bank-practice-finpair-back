@@ -16,7 +16,7 @@ public sealed record LoginRequest(string? Email, string? Password);
 
 public sealed record ChangeEmailRequest(string? Email, string? Password);
 
-public sealed record UserSummary(Guid Id, string Email, bool EmailVerified, bool HasPartner);
+public sealed record UserSummary(Guid Id, string Email, string Name, bool EmailVerified, bool HasPartner);
 
 public sealed record AuthResult(UserSummary User, string AccessToken, int ExpiresIn);
 

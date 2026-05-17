@@ -62,6 +62,37 @@ public sealed class FinanceRepositoryIntegrationTests : IClassFixture<FinancePos
         Assert.Equal(1.2m, dashboard.FinancialLoadPercent);
     }
 
+    [Fact]
+    public async Task FinanceRepository_ReadsAndUpdatesUserProfileName()
+    {
+        if (!_fixture.IsAvailable)
+        {
+            return;
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(_fixture.ConnectionString);
+        var repository = new FinanceRepository(dataSource, new PostgresConnectionString(_fixture.ConnectionString));
+        await repository.EnsureSchemaAsync(CancellationToken.None);
+
+        var (_, userId) = await SeedHouseholdWithUserAsync(dataSource);
+
+        var profile = await repository.GetUserProfileAsync(userId, CancellationToken.None);
+        Assert.NotNull(profile);
+        Assert.Equal("User", profile.Name);
+
+        var updated = await repository.UpdateUserProfileAsync(
+            userId,
+            null,
+            "Partner A",
+            CancellationToken.None);
+
+        Assert.Equal(FinanceMutationStatus.Success, updated.Status);
+        Assert.NotNull(updated.Value);
+        Assert.Equal("Partner A", updated.Value.Name);
+        Assert.Equal(profile.Email, updated.Value.Email);
+        Assert.Equal(profile.Income, updated.Value.Income);
+    }
+
     private static async Task<(Guid HouseholdId, Guid UserId)> SeedHouseholdWithUserAsync(NpgsqlDataSource dataSource)
     {
         var householdId = Guid.NewGuid();
