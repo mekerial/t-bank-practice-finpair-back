@@ -17,7 +17,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddFinPairSwagger("FinPair.ApiGateway");
 builder.Services.AddSingleton(new HttpClient(new HttpClientHandler { UseCookies = false })
 {
-    Timeout = TimeSpan.FromSeconds(30)
+    Timeout = TimeSpan.FromSeconds(120)
 });
 
 var app = builder.Build();

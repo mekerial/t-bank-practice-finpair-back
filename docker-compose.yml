@@ -159,6 +159,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finpair};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Auth__SigningKey: ${Auth__SigningKey}
+      SupportAi__BaseUrl: ${SupportAi__BaseUrl:-https://ollama.com}
+      SupportAi__Model: ${SupportAi__Model:-gpt-oss:120b}
+      SupportAi__ApiKey: ${SupportAi__ApiKey:-}
+      SupportAi__TimeoutSeconds: ${SupportAi__TimeoutSeconds:-90}
     depends_on:
       postgres:
         condition: service_healthy
