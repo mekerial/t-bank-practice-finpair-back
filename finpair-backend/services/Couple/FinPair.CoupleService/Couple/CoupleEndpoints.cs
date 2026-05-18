@@ -12,27 +12,57 @@ public static class CoupleEndpoints
 
         group.MapPost("/create", CreateAsync)
             .WithName("CreateCouple")
-            .Produces<ApiResponse<CreateCoupleResult>>(StatusCodes.Status201Created);
+            .WithSummary("Create a couple household")
+            .WithDescription("Creates a household for the authenticated user and returns the invite code for a partner.")
+            .Produces<ApiResponse<CreateCoupleResult>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/join", JoinAsync)
             .WithName("JoinCouple")
-            .Produces<ApiResponse<JoinCoupleResult>>();
+            .WithSummary("Join a couple by invite code")
+            .WithDescription("Links the authenticated user to an existing household using a partner invite code.")
+            .Produces<ApiResponse<JoinCoupleResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/", GetAsync)
             .WithName("GetCouple")
-            .Produces<ApiResponse<CoupleDetails>>();
+            .WithSummary("Get couple details")
+            .WithDescription("Returns the household, partner and couple settings for the authenticated user.")
+            .Produces<ApiResponse<CoupleDetails>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapPatch("/split", UpdateSplitAsync)
             .WithName("UpdateCoupleSplit")
-            .Produces<ApiResponse<CoupleSettingsResult>>();
+            .WithSummary("Update couple split type")
+            .WithDescription("Updates only the expense split strategy for the authenticated user's household.")
+            .Produces<ApiResponse<CoupleSettingsResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapPatch("/settings", UpdateSettingsAsync)
             .WithName("UpdateCoupleSettings")
-            .Produces<ApiResponse<CoupleSettingsResult>>();
+            .WithSummary("Update couple settings")
+            .WithDescription("Updates one or more household settings such as split type, currency and notifications.")
+            .Produces<ApiResponse<CoupleSettingsResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapPost("/invite-code/regenerate", RegenerateInviteCodeAsync)
             .WithName("RegenerateCoupleInviteCode")
-            .Produces<ApiResponse<InviteCodeResult>>();
+            .WithSummary("Regenerate couple invite code")
+            .WithDescription("Creates a new partner invite code for the authenticated user's household.")
+            .Produces<ApiResponse<InviteCodeResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         return group;
     }

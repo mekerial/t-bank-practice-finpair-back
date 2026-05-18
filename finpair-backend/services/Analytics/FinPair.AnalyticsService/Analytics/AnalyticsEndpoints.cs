@@ -11,23 +11,43 @@ public static class AnalyticsEndpoints
 
         group.MapGet("/summary", GetSummaryAsync)
             .WithName("GetAnalyticsSummary")
-            .Produces<ApiResponse<SummaryResult>>();
+            .WithSummary("Get analytics summary")
+            .WithDescription("Returns aggregate income, expense, balance and load metrics for the authenticated user's household.")
+            .Produces<ApiResponse<SummaryResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapGet("/categories", GetCategoriesAsync)
             .WithName("GetAnalyticsCategories")
-            .Produces<ApiResponse<ItemsResponse<CategoryAmount>>>();
+            .WithSummary("Get category analytics")
+            .WithDescription("Returns spending or income amounts grouped by category for the authenticated user's household.")
+            .Produces<ApiResponse<ItemsResponse<CategoryAmount>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapGet("/dynamics", GetDynamicsAsync)
             .WithName("GetAnalyticsDynamics")
-            .Produces<ApiResponse<ItemsResponse<MonthlyDynamicsPoint>>>();
+            .WithSummary("Get monthly dynamics")
+            .WithDescription("Returns monthly income and expense dynamics for the authenticated user's household.")
+            .Produces<ApiResponse<ItemsResponse<MonthlyDynamicsPoint>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapGet("/insights", GetInsightsAsync)
             .WithName("GetAnalyticsInsights")
-            .Produces<ApiResponse<ItemsResponse<InsightResult>>>();
+            .WithSummary("Get analytics insights")
+            .WithDescription("Returns generated financial insights for the authenticated user's household.")
+            .Produces<ApiResponse<ItemsResponse<InsightResult>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapGet("/overview", GetOverviewAsync)
             .WithName("GetAnalyticsOverview")
-            .Produces<ApiResponse<OverviewResult>>();
+            .WithSummary("Get analytics overview")
+            .WithDescription("Returns the combined analytics overview used by the dashboard.")
+            .Produces<ApiResponse<OverviewResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         return group;
     }

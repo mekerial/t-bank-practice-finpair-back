@@ -28,16 +28,29 @@ if (app.Environment.IsDevelopment())
         command.CommandText = "SELECT 1";
         var one = await command.ExecuteScalarAsync();
         return Results.Ok(new { ok = true, scalar = one });
-    });
+    })
+        .WithName("GoalDbPing")
+        .WithTags("Diagnostics")
+        .WithSummary("Check goal database connectivity")
+        .WithDescription("Development-only endpoint that verifies the goal service can execute a simple PostgreSQL query.")
+        .Produces(StatusCodes.Status200OK);
 }
 
 app.UseHttpsRedirection();
 app.UseFinPairBearerAuth();
 
 app.MapGet("/", () => Results.Ok(new { service = "FinPair.GoalService", product = "FinPair" }))
-    .WithName("Root");
+    .WithName("Root")
+    .WithTags("Service")
+    .WithSummary("Get goal service info")
+    .WithDescription("Returns basic service identity information for the goal service.")
+    .Produces(StatusCodes.Status200OK);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-    .WithName("Health");
+    .WithName("Health")
+    .WithTags("Diagnostics")
+    .WithSummary("Get goal service health")
+    .WithDescription("Returns the current health status of the goal service.")
+    .Produces(StatusCodes.Status200OK);
 app.MapGoalEndpoints();
 
 await app.RunAsync();

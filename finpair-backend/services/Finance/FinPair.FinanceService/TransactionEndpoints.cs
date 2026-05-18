@@ -15,10 +15,14 @@ public static class TransactionEndpoints
 
         group.MapGet("/", ListAsync)
             .WithName("ListTransactionsByHousehold")
+            .WithSummary("List household transactions")
+            .WithDescription("Returns all transactions stored for the specified household.")
             .Produces<IReadOnlyList<TransactionResponse>>(StatusCodes.Status200OK);
 
         group.MapPost("/", CreateAsync)
             .WithName("CreateTransaction")
+            .WithSummary("Create household transaction")
+            .WithDescription("Creates a transaction for the specified household using the legacy household-scoped contract.")
             .Produces<TransactionResponse>(StatusCodes.Status201Created)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
 

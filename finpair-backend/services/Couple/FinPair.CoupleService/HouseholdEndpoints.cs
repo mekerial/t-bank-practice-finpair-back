@@ -14,16 +14,22 @@ public static class HouseholdEndpoints
 
         group.MapPost("/", CreateAsync)
             .WithName("CreateHousehold")
+            .WithSummary("Create a household")
+            .WithDescription("Creates a household with optional currency and split type settings.")
             .Produces<HouseholdResponse>(StatusCodes.Status201Created)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id:guid}", GetByIdAsync)
             .WithName("GetHouseholdById")
+            .WithSummary("Get household by ID")
+            .WithDescription("Returns household details for the specified household identifier.")
             .Produces<HouseholdResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("/join", JoinAsync)
             .WithName("JoinHouseholdByInvite")
+            .WithSummary("Join household by invite code")
+            .WithDescription("Finds and returns a household matching the supplied invite code.")
             .Produces<HouseholdResponse>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);

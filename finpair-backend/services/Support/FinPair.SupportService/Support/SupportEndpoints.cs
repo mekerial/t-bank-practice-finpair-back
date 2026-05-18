@@ -19,23 +19,36 @@ public static class SupportEndpoints
 
         group.MapGet("/faq", GetFaq)
             .WithName("GetFaq")
-            .Produces<ApiResponse<ItemsResponse<FaqItem>>>();
+            .WithSummary("Get support FAQ")
+            .WithDescription("Returns frequently asked support questions and answers.")
+            .Produces<ApiResponse<ItemsResponse<FaqItem>>>(StatusCodes.Status200OK);
 
         group.MapGet("/contacts", GetContacts)
             .WithName("GetSupportContacts")
-            .Produces<ApiResponse<ContactsResult>>();
+            .WithSummary("Get support contacts")
+            .WithDescription("Returns public email and Telegram contacts for FinPair support.")
+            .Produces<ApiResponse<ContactsResult>>(StatusCodes.Status200OK);
 
         group.MapPost("/chat", CreateChatResponseAsync)
             .WithName("CreateSupportChatResponse")
-            .Produces<ApiResponse<SupportChatResponse>>();
+            .WithSummary("Ask support chat")
+            .WithDescription("Sends a question to the configured support chat provider and returns an answer or fallback message.")
+            .Produces<ApiResponse<SupportChatResponse>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
 
         group.MapPost("/message", CreateMessageAsync)
             .WithName("CreateSupportMessage")
-            .Produces<ApiResponse<SupportTicketResult>>(StatusCodes.Status201Created);
+            .WithSummary("Create support message")
+            .WithDescription("Creates a support ticket message, optionally linked to the authenticated user.")
+            .Produces<ApiResponse<SupportTicketResult>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
 
         group.MapPost("/messages", CreateMessageAsync)
             .WithName("CreateSupportMessages")
-            .Produces<ApiResponse<SupportTicketResult>>(StatusCodes.Status201Created);
+            .WithSummary("Create support message (alias)")
+            .WithDescription("Alias for creating a support ticket message.")
+            .Produces<ApiResponse<SupportTicketResult>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
 
         return group;
     }
