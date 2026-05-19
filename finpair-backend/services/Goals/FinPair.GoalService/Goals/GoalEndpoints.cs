@@ -12,31 +12,68 @@ public static class GoalEndpoints
 
         group.MapGet("", GetGoalsAsync)
             .WithName("GetGoals")
-            .Produces<ApiResponse<ItemsResponse<GoalDto>>>();
+            .WithSummary("List goals")
+            .WithDescription("Returns all savings goals for the authenticated user's household.")
+            .Produces<ApiResponse<ItemsResponse<GoalDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapPost("", CreateGoalAsync)
             .WithName("CreateGoal")
-            .Produces<ApiResponse<GoalDto>>(StatusCodes.Status201Created);
+            .WithSummary("Create goal")
+            .WithDescription("Creates a savings goal for the authenticated user's household.")
+            .Produces<ApiResponse<GoalDto>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/{goalId:guid}", GetGoalAsync)
             .WithName("GetGoal")
-            .Produces<ApiResponse<GoalDto>>();
+            .WithSummary("Get goal")
+            .WithDescription("Returns a goal if it belongs to the authenticated user's household.")
+            .Produces<ApiResponse<GoalDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         group.MapPatch("/{goalId:guid}", UpdateGoalAsync)
             .WithName("UpdateGoal")
-            .Produces<ApiResponse<GoalDto>>();
+            .WithSummary("Update goal")
+            .WithDescription("Updates one or more fields of an accessible savings goal.")
+            .Produces<ApiResponse<GoalDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         group.MapDelete("/{goalId:guid}", DeleteGoalAsync)
             .WithName("DeleteGoal")
-            .Produces(StatusCodes.Status204NoContent);
+            .WithSummary("Delete goal")
+            .WithDescription("Deletes a savings goal accessible to the authenticated user.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/{goalId:guid}/contributions", AddContributionAsync)
             .WithName("AddGoalContribution")
-            .Produces<ApiResponse<GoalContributionResult>>(StatusCodes.Status201Created);
+            .WithSummary("Add goal contribution")
+            .WithDescription("Adds a contribution to an accessible savings goal and returns the updated contribution result.")
+            .Produces<ApiResponse<GoalContributionResult>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/{goalId:guid}/contribute", AddContributionAsync)
             .WithName("ContributeGoal")
-            .Produces<ApiResponse<GoalContributionResult>>(StatusCodes.Status201Created);
+            .WithSummary("Add goal contribution (alias)")
+            .WithDescription("Alias for adding a contribution to an accessible savings goal.")
+            .Produces<ApiResponse<GoalContributionResult>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
 
         return group;
     }

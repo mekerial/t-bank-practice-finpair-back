@@ -12,31 +12,67 @@ public static class FinanceEndpoints
 
         api.MapGet("/users/me", GetUserProfileAsync)
             .WithName("GetUserProfile")
-            .WithTags("Users");
+            .WithTags("Users")
+            .WithSummary("Get current user's finance profile")
+            .WithDescription("Returns income and display profile data for the authenticated user.")
+            .Produces<ApiResponse<UserProfileResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
 
         api.MapPatch("/users/me", UpdateUserProfileAsync)
             .WithName("UpdateUserProfile")
-            .WithTags("Users");
+            .WithTags("Users")
+            .WithSummary("Update current user's finance profile")
+            .WithDescription("Updates the authenticated user's income and/or display name.")
+            .Produces<ApiResponse<UserProfileResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
 
         api.MapGet("/settings", GetSettingsAsync)
             .WithName("GetSettings")
-            .WithTags("Settings");
+            .WithTags("Settings")
+            .WithSummary("Get household finance settings")
+            .WithDescription("Returns currency and notification settings for the authenticated user's household.")
+            .Produces<ApiResponse<SettingsResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         api.MapPatch("/settings", UpdateSettingsAsync)
             .WithName("UpdateSettings")
-            .WithTags("Settings");
+            .WithTags("Settings")
+            .WithSummary("Update household finance settings")
+            .WithDescription("Updates household currency and/or notification preferences.")
+            .Produces<ApiResponse<SettingsResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         api.MapGet("/finance/profile", GetFinanceProfileAsync)
             .WithName("GetFinanceProfile")
-            .WithTags("Finance");
+            .WithTags("Finance")
+            .WithSummary("Get finance profile")
+            .WithDescription("Returns combined user and household finance profile for the authenticated user.")
+            .Produces<ApiResponse<FinanceProfileResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         api.MapPatch("/finance/profile", UpdateFinanceProfileAsync)
             .WithName("UpdateFinanceProfile")
-            .WithTags("Finance");
+            .WithTags("Finance")
+            .WithSummary("Update finance profile")
+            .WithDescription("Updates income, currency and/or notification preferences in the finance profile.")
+            .Produces<ApiResponse<FinanceProfileResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         api.MapGet("/finance/dashboard", GetDashboardAsync)
             .WithName("GetFinanceDashboard")
-            .WithTags("Finance");
+            .WithTags("Finance")
+            .WithSummary("Get finance dashboard")
+            .WithDescription("Returns dashboard totals and recent financial data for the authenticated user's household.")
+            .Produces<ApiResponse<DashboardResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         MapTransactionRoutes(api.MapGroup("/transactions").WithTags("Transactions"));
         MapTransactionRoutes(api.MapGroup("/finance/transactions").WithTags("Transactions"));
@@ -49,27 +85,70 @@ public static class FinanceEndpoints
     private static void MapTransactionRoutes(RouteGroupBuilder group)
     {
         group.MapPost("", CreateTransactionAsync)
-            .Produces<ApiResponse<TransactionDto>>(StatusCodes.Status201Created);
+            .WithSummary("Create transaction")
+            .WithDescription("Creates an income or expense transaction for the authenticated user's household.")
+            .Produces<ApiResponse<TransactionDto>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
         group.MapGet("", GetTransactionsAsync)
-            .Produces<ApiResponse<PagedItemsResponse<TransactionDto>>>();
+            .WithSummary("List transactions")
+            .WithDescription("Returns a paged list of household transactions with optional filters by type, category, user and date range.")
+            .Produces<ApiResponse<PagedItemsResponse<TransactionDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
         group.MapGet("/{transactionId:guid}", GetTransactionAsync)
-            .Produces<ApiResponse<TransactionDto>>();
+            .WithSummary("Get transaction")
+            .WithDescription("Returns a transaction if it belongs to the authenticated user's household.")
+            .Produces<ApiResponse<TransactionDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
         group.MapPatch("/{transactionId:guid}", UpdateTransactionAsync)
-            .Produces<ApiResponse<TransactionDto>>();
+            .WithSummary("Update transaction")
+            .WithDescription("Updates one or more fields of an accessible household transaction.")
+            .Produces<ApiResponse<TransactionDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
         group.MapDelete("/{transactionId:guid}", DeleteTransactionAsync)
-            .Produces(StatusCodes.Status204NoContent);
+            .WithSummary("Delete transaction")
+            .WithDescription("Deletes an accessible household transaction.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
     }
 
     private static void MapCategoryRoutes(RouteGroupBuilder group)
     {
         group.MapGet("", GetCategoriesAsync)
-            .Produces<ApiResponse<ItemsResponse<CategoryDto>>>();
+            .WithSummary("List categories")
+            .WithDescription("Returns transaction categories, optionally filtered by income or expense type.")
+            .Produces<ApiResponse<ItemsResponse<CategoryDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
         group.MapPost("", CreateCategoryAsync)
-            .Produces<ApiResponse<CategoryDto>>(StatusCodes.Status201Created);
+            .WithSummary("Create category")
+            .WithDescription("Creates a transaction category with a unique name and type.")
+            .Produces<ApiResponse<CategoryDto>>(StatusCodes.Status201Created)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
         group.MapPatch("/{categoryId:guid}", UpdateCategoryAsync)
-            .Produces<ApiResponse<CategoryDto>>();
+            .WithSummary("Update category")
+            .WithDescription("Updates a category name and/or transaction type.")
+            .Produces<ApiResponse<CategoryDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
         group.MapDelete("/{categoryId:guid}", DeleteCategoryAsync)
-            .Produces(StatusCodes.Status204NoContent);
+            .WithSummary("Delete category")
+            .WithDescription("Deletes a category when it is not referenced by transactions.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
     }
 
     private static async Task<IResult> GetUserProfileAsync(

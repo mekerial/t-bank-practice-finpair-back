@@ -41,7 +41,12 @@ if (app.Environment.IsDevelopment())
         command.CommandText = "SELECT 1";
         var one = await command.ExecuteScalarAsync();
         return Results.Ok(new { ok = true, scalar = one });
-    });
+    })
+        .WithName("FinanceDbPing")
+        .WithTags("Diagnostics")
+        .WithSummary("Check finance database connectivity")
+        .WithDescription("Development-only endpoint that verifies the finance service can execute a simple PostgreSQL query.")
+        .Produces(StatusCodes.Status200OK);
 }
 
 app.UseHttpsRedirection();
@@ -49,9 +54,17 @@ app.UseCors(CorsPolicyName);
 app.UseFinPairBearerAuth();
 
 app.MapGet("/", () => Results.Ok(new { service = "FinPair.FinanceService", product = "FinPair" }))
-    .WithName("Root");
+    .WithName("Root")
+    .WithTags("Service")
+    .WithSummary("Get finance service info")
+    .WithDescription("Returns basic service identity information for the finance service.")
+    .Produces(StatusCodes.Status200OK);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-    .WithName("Health");
+    .WithName("Health")
+    .WithTags("Diagnostics")
+    .WithSummary("Get finance service health")
+    .WithDescription("Returns the current health status of the finance service.")
+    .Produces(StatusCodes.Status200OK);
 app.MapTransactionEndpoints();
 app.MapFinanceEndpoints();
 

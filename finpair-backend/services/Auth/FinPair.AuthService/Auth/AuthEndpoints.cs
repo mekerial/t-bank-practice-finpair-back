@@ -13,32 +13,44 @@ public static class AuthEndpoints
 
         group.MapPost("/register", RegisterAsync)
             .WithName("Register")
+            .WithSummary("Register a new user")
+            .WithDescription("Creates a FinPair account, signs the user in, returns an access token and sets the refresh token cookie.")
             .Produces<ApiResponse<AuthResult>>(StatusCodes.Status201Created)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
         group.MapPost("/login", LoginAsync)
             .WithName("Login")
+            .WithSummary("Sign in with email and password")
+            .WithDescription("Validates credentials, returns an access token and rotates the refresh token cookie.")
             .Produces<ApiResponse<AuthResult>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
             .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
 
         group.MapPost("/refresh", RefreshAsync)
             .WithName("Refresh")
+            .WithSummary("Refresh an access token")
+            .WithDescription("Uses the HTTP-only refresh token cookie, rotates it and returns a fresh access token.")
             .Produces<ApiResponse<RefreshResult>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
 
         group.MapPost("/logout", LogoutAsync)
             .WithName("Logout")
+            .WithSummary("Sign out")
+            .WithDescription("Revokes the refresh token from the cookie when present and clears the refresh token cookie.")
             .Produces(StatusCodes.Status204NoContent);
 
         group.MapGet("/me", MeAsync)
             .WithName("CurrentUser")
+            .WithSummary("Get current user")
+            .WithDescription("Returns the profile summary for the user identified by the bearer access token.")
             .Produces<ApiResponse<UserSummary>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized);
 
         group.MapPatch("/email", ChangeEmailAsync)
             .WithName("ChangeEmail")
+            .WithSummary("Change current user's email")
+            .WithDescription("Updates the authenticated user's email after password confirmation.")
             .Produces<ApiResponse<ChangeEmailResult>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
             .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)

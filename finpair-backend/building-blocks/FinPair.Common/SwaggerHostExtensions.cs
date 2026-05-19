@@ -17,6 +17,13 @@ public static class SwaggerHostExtensions
                 Version = "v1",
                 Description = "FinPair — API для совместного управления финансами пар."
             });
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "JWT access token. Enter only the token value without the 'Bearer' prefix."
+            });
         });
         return services;
     }

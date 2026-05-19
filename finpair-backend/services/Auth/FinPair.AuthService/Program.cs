@@ -40,7 +40,12 @@ if (app.Environment.IsDevelopment())
         command.CommandText = "SELECT 1";
         var one = await command.ExecuteScalarAsync();
         return Results.Ok(new { ok = true, scalar = one });
-    });
+    })
+        .WithName("AuthDbPing")
+        .WithTags("Diagnostics")
+        .WithSummary("Check auth database connectivity")
+        .WithDescription("Development-only endpoint that verifies the auth service can execute a simple PostgreSQL query.")
+        .Produces(StatusCodes.Status200OK);
 }
 
 app.UseHttpsRedirection();
@@ -63,9 +68,17 @@ app.Use(async (context, next) =>
 });
 
 app.MapGet("/", () => Results.Ok(new { service = "FinPair.AuthService", product = "FinPair" }))
-    .WithName("Root");
+    .WithName("Root")
+    .WithTags("Service")
+    .WithSummary("Get auth service info")
+    .WithDescription("Returns basic service identity information for the auth service.")
+    .Produces(StatusCodes.Status200OK);
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
-    .WithName("Health");
+    .WithName("Health")
+    .WithTags("Diagnostics")
+    .WithSummary("Get auth service health")
+    .WithDescription("Returns the current health status of the auth service.")
+    .Produces(StatusCodes.Status200OK);
 app.MapAuthEndpoints();
 
 await app.RunAsync();
